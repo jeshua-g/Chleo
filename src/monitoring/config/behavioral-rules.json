@@ -91,6 +91,45 @@
         "Fine, {domain} is unlocked now that you passed the puzzle, but don't stay here long!"
       ],
       "llmDirective": "Chleo unlocks the site reluctantly after puzzle completion, still annoyed at the user."
+    },
+    {
+      "id": "SITE_BLOCKED",
+      "name": "Site Blocked",
+      "conditions": {
+        "event": "SITE_BLOCKED"
+      },
+      "emotionDeltas": {},
+      "heuristicTemplates": [
+        "I have completely blocked {domain}!",
+        "Access to {domain} has been blocked."
+      ],
+      "llmDirective": "Chleo confirms that the site has been blocked."
+    },
+    {
+      "id": "SITE_MARKED_PRODUCTIVE",
+      "name": "Site Marked Productive",
+      "conditions": {
+        "event": "SITE_MARKED_PRODUCTIVE"
+      },
+      "emotionDeltas": {},
+      "heuristicTemplates": [
+        "{domain} is now marked as productive!",
+        "Marked {domain} as productive."
+      ],
+      "llmDirective": "Chleo confirms that the site is marked as productive."
+    },
+    {
+      "id": "SITE_UNMARKED_PRODUCTIVE",
+      "name": "Site Unmarked Productive",
+      "conditions": {
+        "event": "SITE_UNMARKED_PRODUCTIVE"
+      },
+      "emotionDeltas": {},
+      "heuristicTemplates": [
+        "{domain} is now marked as neutral.",
+        "Removed productive status from {domain}."
+      ],
+      "llmDirective": "Chleo confirms that the site is no longer marked as productive."
     }
   ]
 }

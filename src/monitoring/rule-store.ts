@@ -1,6 +1,12 @@
 import type { SiteRule, SiteType, MonitoringConfig, MonitoringEventPayload, TickResult } from './monitoring-types';
 import { BehavioralEngine } from './behavioral-engine';
 import defaultActivityRules from './config/activity-rules.json';
+import { parseMonitoringCommand, ParsedCommand } from './command-parser';
+
+export interface RuleStoreListeners {
+  onEventTriggered?: (payload: MonitoringEventPayload, speechText: string) => void;
+  onRuleChanged?: () => void;
+}
 
 /**
  * RuleStore manages site rules only: reading, writing, and updating domain rules
@@ -12,10 +18,16 @@ export class RuleStore {
   private behavioralEngine: BehavioralEngine;
   private storageKeyActivity = 'chleo_activity_rules_v1';
   private cumulativeProductiveSeconds: number = 0;
+  private listeners?: RuleStoreListeners;
 
-  constructor(behavioralEngine: BehavioralEngine) {
+  constructor(behavioralEngine: BehavioralEngine, listeners?: RuleStoreListeners) {
     this.behavioralEngine = behavioralEngine;
     this.activityConfig = this.loadActivityConfig();
+    this.listeners = listeners;
+  }
+
+  setListeners(listeners?: RuleStoreListeners): void {
+    this.listeners = listeners;
   }
 
   private loadActivityConfig(): MonitoringConfig {
@@ -54,7 +66,7 @@ export class RuleStore {
     });
   }
 
-  setBlockSite(domain: string, useThisRule?: SiteRule): SiteRule {
+  async setBlockSite(domain: string, useThisRule?: SiteRule, options?: { skipEvent?: boolean }): Promise<SiteRule> {
     let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
@@ -71,10 +83,30 @@ export class RuleStore {
       rule.requiresPuzzleToUnblock = true;
     }
     this.saveActivityConfig();
+
+    if (!options?.skipEvent) {
+      const payload: MonitoringEventPayload = {
+        eventId: 'SITE_BLOCKED',
+        domain,
+        timeSpentSeconds: rule.spentTodaySeconds,
+        limitSeconds: rule.dailyLimitSeconds,
+        percentSpent: 100,
+        remainingSeconds: 0,
+        siteType: 'blocked',
+      };
+      const result = await this.behavioralEngine.processEvent(payload);
+      if (result && this.listeners?.onEventTriggered) {
+        this.listeners.onEventTriggered(payload, result.speechText);
+      }
+      if (this.listeners?.onRuleChanged) {
+        this.listeners.onRuleChanged();
+      }
+    }
+
     return rule;
   }
 
-  setUnblockSite(domain: string, useThisRule?: SiteRule): SiteRule {
+  async setUnblockSite(domain: string, useThisRule?: SiteRule, options?: { skipEvent?: boolean }): Promise<SiteRule> {
     let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
@@ -91,6 +123,26 @@ export class RuleStore {
       rule.requiresPuzzleToUnblock = false;
     }
     this.saveActivityConfig();
+
+    if (!options?.skipEvent) {
+      const payload: MonitoringEventPayload = {
+        eventId: 'PUZZLE_UNBLOCK_PENALTY',
+        domain,
+        timeSpentSeconds: rule.spentTodaySeconds,
+        limitSeconds: rule.dailyLimitSeconds,
+        percentSpent: 0,
+        remainingSeconds: 0,
+        siteType: 'neutral',
+      };
+      const result = await this.behavioralEngine.processEvent(payload);
+      if (result && this.listeners?.onEventTriggered) {
+        this.listeners.onEventTriggered(payload, result.speechText);
+      }
+      if (this.listeners?.onRuleChanged) {
+        this.listeners.onRuleChanged();
+      }
+    }
+
     return rule;
   }
 
@@ -112,10 +164,13 @@ export class RuleStore {
       rule.spentTodaySeconds = 0; // reset for new limit testing
     }
     this.saveActivityConfig();
+    if (this.listeners?.onRuleChanged) {
+      this.listeners.onRuleChanged();
+    }
     return rule;
   }
 
-  setSiteProductive(domain: string, isProductive: boolean, useThisRule?: SiteRule): SiteRule {
+  async setSiteProductive(domain: string, isProductive: boolean, useThisRule?: SiteRule, options?: { skipEvent?: boolean }): Promise<SiteRule> {
     let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
@@ -131,6 +186,27 @@ export class RuleStore {
       rule.type = isProductive ? 'productive' : 'neutral';
     }
     this.saveActivityConfig();
+
+    if (!options?.skipEvent) {
+      const eventId = isProductive ? 'SITE_MARKED_PRODUCTIVE' : 'SITE_UNMARKED_PRODUCTIVE';
+      const payload: MonitoringEventPayload = {
+        eventId,
+        domain,
+        timeSpentSeconds: rule.spentTodaySeconds,
+        limitSeconds: rule.dailyLimitSeconds,
+        percentSpent: 0,
+        remainingSeconds: 0,
+        siteType: isProductive ? 'productive' : 'neutral',
+      };
+      const result = await this.behavioralEngine.processEvent(payload);
+      if (result && this.listeners?.onEventTriggered) {
+        this.listeners.onEventTriggered(payload, result.speechText);
+      }
+      if (this.listeners?.onRuleChanged) {
+        this.listeners.onRuleChanged();
+      }
+    }
+
     return rule;
   }
 
@@ -198,7 +274,7 @@ export class RuleStore {
 
       // Exceeded
       if (spent >= limit) {
-        rule = this.setBlockSite(domain, rule);
+        rule = await this.setBlockSite(domain, rule, { skipEvent: true });
 
         const payload: MonitoringEventPayload = {
           eventId: 'LIMIT_EXCEEDED',
@@ -211,6 +287,12 @@ export class RuleStore {
         };
 
         const result = await this.behavioralEngine.processEvent(payload);
+        if (result && this.listeners?.onEventTriggered) {
+          this.listeners.onEventTriggered(payload, result.speechText);
+        }
+        if (this.listeners?.onRuleChanged) {
+          this.listeners.onRuleChanged();
+        }
         return {
           domain,
           spentTodaySeconds: spent,
@@ -235,6 +317,9 @@ export class RuleStore {
         };
 
         const result = await this.behavioralEngine.processEvent(payload);
+        if (result && this.listeners?.onEventTriggered) {
+          this.listeners.onEventTriggered(payload, result.speechText);
+        }
         return {
           domain,
           spentTodaySeconds: spent,
@@ -263,6 +348,9 @@ export class RuleStore {
         };
 
         const result = await this.behavioralEngine.processEvent(payload);
+        if (result && this.listeners?.onEventTriggered) {
+          this.listeners.onEventTriggered(payload, result.speechText);
+        }
         return {
           domain,
           spentTodaySeconds: rule.spentTodaySeconds,
@@ -282,7 +370,7 @@ export class RuleStore {
   }
 
   /**
-   * Evaluate a site visit (used by handleSiteVisit).
+   * Evaluate a site visit.
    */
   async evaluateVisit(domain: string): Promise<TickResult> {
     const rule = this.findRuleForDomain(domain);
@@ -299,6 +387,9 @@ export class RuleStore {
       };
 
       const result = await this.behavioralEngine.processEvent(payload);
+      if (result && this.listeners?.onEventTriggered) {
+        this.listeners.onEventTriggered(payload, result.speechText);
+      }
       return {
         domain,
         spentTodaySeconds: rule.spentTodaySeconds,
@@ -312,10 +403,10 @@ export class RuleStore {
   }
 
   /**
-   * Evaluate puzzle unblock (used by completePuzzleAndUnblock).
+   * Evaluate puzzle unblock.
    */
   async evaluatePuzzleUnblock(domain: string): Promise<TickResult> {
-    const rule = this.setUnblockSite(domain);
+    const rule = await this.setUnblockSite(domain, undefined, { skipEvent: true });
 
     const payload: MonitoringEventPayload = {
       eventId: 'PUZZLE_UNBLOCK_PENALTY',
@@ -328,6 +419,13 @@ export class RuleStore {
     };
 
     const result = await this.behavioralEngine.processEvent(payload);
+    if (result && this.listeners?.onEventTriggered) {
+      this.listeners.onEventTriggered(payload, result.speechText);
+    }
+    if (this.listeners?.onRuleChanged) {
+      this.listeners.onRuleChanged();
+    }
+
     return {
       domain,
       spentTodaySeconds: rule.spentTodaySeconds,
@@ -335,6 +433,64 @@ export class RuleStore {
       ruleChanged: true,
       reaction: result ? { payload, speechText: result.speechText } : undefined,
     };
+  }
+
+  /**
+   * Process natural language text commands (e.g. "block facebook.com", "limit youtube.com to 1 min").
+   */
+  async processCommand(textCommand: string): Promise<{ parsed: ParsedCommand; responseText: string }> {
+    const parsed = parseMonitoringCommand(textCommand);
+    let responseText = '';
+
+    switch (parsed.action) {
+      case 'BLOCK': {
+        if (parsed.domain) {
+          await this.setBlockSite(parsed.domain);
+          responseText = `Okay, I have completely blocked ${parsed.domain}!`;
+        }
+        break;
+      }
+
+      case 'UNBLOCK': {
+        if (parsed.domain) {
+          responseText = `To unblock ${parsed.domain}, you must finish my puzzle challenge! Click the puzzle unblock button below.`;
+        }
+        break;
+      }
+
+      case 'LIMIT': {
+        if (parsed.domain && parsed.seconds) {
+          this.setSiteLimit(parsed.domain, parsed.seconds);
+          const formatted = parsed.seconds >= 60 ? `${Math.round(parsed.seconds / 60)} minutes` : `${parsed.seconds} seconds`;
+          responseText = `Got it! Set a daily limit of ${formatted} for ${parsed.domain}.`;
+        }
+        break;
+      }
+
+      case 'MARK_PRODUCTIVE': {
+        if (parsed.domain) {
+          await this.setSiteProductive(parsed.domain, true);
+          responseText = `Marked ${parsed.domain} as productive! You will earn rewards for staying focused there.`;
+        }
+        break;
+      }
+
+      case 'UNMARK_PRODUCTIVE': {
+        if (parsed.domain) {
+          await this.setSiteProductive(parsed.domain, false);
+          responseText = `Removed ${parsed.domain} from productive sites.`;
+        }
+        break;
+      }
+
+      default: {
+        responseText = `I didn't understand that monitoring command. Try: 'block twitter.com', 'limit youtube.com to 1 minute', or 'mark github.com productive'.`;
+      }
+    }
+
+    if (this.listeners?.onRuleChanged) this.listeners.onRuleChanged();
+
+    return { parsed, responseText };
   }
 
   /**

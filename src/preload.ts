@@ -13,5 +13,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
     setDragging: (dragging: boolean) => {
         ipcRenderer.send('set-dragging', dragging);
-    }
+    },
+    saveMemoryFile: (filename: string, content: string) => ipcRenderer.invoke('save-memory-file', filename, content),
+    readMemoryFile: (filename: string) => ipcRenderer.invoke('read-memory-file', filename)
 });

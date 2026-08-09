@@ -16,8 +16,8 @@ export class LongTermMemory {
   private rewardCap: number = REWARD_CAP;
 
   constructor() {
-    this.data = this.loadInitialData();
-    this.updateDaysKnown();
+    this.data = this.getDefaultData();
+    this.load();
   }
 
   setViolationCap(cap: number): void {
@@ -36,18 +36,7 @@ export class LongTermMemory {
     return this.rewardCap;
   }
 
-  private loadInitialData(): LongTermMemoryData {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const raw = window.localStorage.getItem(this.storageKey);
-        if (raw) {
-          return JSON.parse(raw);
-        }
-      }
-    } catch (e) {
-      console.warn('[LongTermMemory] Failed to read from localStorage:', e);
-    }
-
+  private getDefaultData(): LongTermMemoryData {
     const now = Date.now();
     return {
       daysKnown: 1,
@@ -72,21 +61,61 @@ export class LongTermMemory {
     };
   }
 
+  load(): void {
+    try {
+      const applyData = (raw: string) => {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') {
+          this.data = { ...this.getDefaultData(), ...parsed };
+          this.updateDaysKnown();
+        }
+      };
+
+      // Desktop Native (Electron IPC) load check
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.readMemoryFile) {
+        (window as any).electronAPI.readMemoryFile('long_term_memory.json').then((raw: string | null) => {
+          if (raw) {
+            applyData(raw);
+          } else if (window.localStorage) {
+            const localRaw = window.localStorage.getItem(this.storageKey);
+            if (localRaw) applyData(localRaw);
+          }
+        });
+        return;
+      }
+
+      // Browser localStorage fallback
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(this.storageKey);
+        if (raw) applyData(raw);
+      }
+    } catch (e) {
+      console.warn('[LongTermMemory] Failed to load long-term memory:', e);
+    }
+  }
+
   save(): void {
     try {
       this.data.lastSeenTimestamp = Date.now();
+      const jsonStr = JSON.stringify(this.data, null, 2);
+
+      // Desktop Native (Electron IPC) save check
+      if (typeof window !== 'undefined' && (window as any).electronAPI?.saveMemoryFile) {
+        (window as any).electronAPI.saveMemoryFile('long_term_memory.json', jsonStr);
+      }
+
+      // Browser localStorage fallback
       if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+        window.localStorage.setItem(this.storageKey, jsonStr);
       }
     } catch (e) {
-      console.warn('[LongTermMemory] Failed to save to localStorage:', e);
+      console.warn('[LongTermMemory] Failed to save to storage:', e);
     }
   }
 
   private updateDaysKnown(): void {
-    const diffMs = Date.now() - this.data.firstSeenTimestamp;
+    const diffMs = Date.now() - (this.data.firstSeenTimestamp || Date.now());
     this.data.daysKnown = Math.max(1, Math.floor(diffMs / MS_PER_DAY) + 1);
-    this.save();
   }
 
   getData(): LongTermMemoryData {
@@ -142,6 +171,50 @@ export class LongTermMemory {
    */
   exportJSON(): string {
     return JSON.stringify(this.data, null, 2);
+  }
+
+  /**
+   * Import long-term memory state from a JSON string.
+   */
+  importJSON(jsonString: string): boolean {
+    try {
+      const parsed = JSON.parse(jsonString);
+      if (parsed && typeof parsed === 'object') {
+        this.data = { ...this.getDefaultData(), ...parsed };
+        this.updateDaysKnown();
+        this.save();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error('[LongTermMemory] Failed to import JSON:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Trigger browser file download of long-term memory state.
+   */
+  downloadJSON(filename: string = 'long_term_memory.json'): void {
+    if (typeof window === 'undefined') return;
+    const jsonStr = this.exportJSON();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  /**
+   * Reset long-term memory to initial defaults.
+   */
+  reset(): void {
+    this.data = this.getDefaultData();
+    this.save();
   }
 }
 

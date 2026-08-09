@@ -20,6 +20,7 @@ import { ActivitySimulator } from '../components/ActivitySimulator';
 import { EngineTuningControls } from '../components/EngineTuningControls';
 import { VoiceModulationControls } from '../components/VoiceModulationControls';
 import { MonitoringSimulator } from '../components/MonitoringSimulator';
+import { MemoryPanel } from '../components/MemoryPanel';
 import { MarketplaceSection } from '../components/MarketplaceSection';
 import { ProjectOverview } from '../components/ProjectOverview';
 
@@ -36,7 +37,7 @@ export const PlaygroundPage: React.FC = () => {
   const [theme, setTheme] = useState<'cream' | 'grid'>('cream');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [showMappedWords, setShowMappedWords] = useState<boolean>(false);
-  const [activeTabPanel, setActiveTabPanel] = useState<'modulation' | 'monitoring'>('modulation');
+  const [activeTabPanel, setActiveTabPanel] = useState<'modulation' | 'monitoring' | 'memory'>('modulation');
 
   const [speechBubbleText, setSpeechBubbleText] = useState<string>(
     'Hello! I am CHLEO. Click any action below to test my reactions!'
@@ -193,32 +194,41 @@ export const PlaygroundPage: React.FC = () => {
             onRenderScaleChange={handleRenderScaleChange}
           />
 
-          {/* Sub-panel Tabs for Voice Modulation & Monitoring Simulator */}
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px', marginBottom: '8px' }}>
+          {/* Sub-panel Tabs for Voice Modulation, Monitoring Simulator & Memory */}
+          <div style={{ display: 'flex', gap: '6px', marginTop: '12px', marginBottom: '8px' }}>
             <Button
               variant={activeTabPanel === 'modulation' ? 'primary' : 'secondary'}
               onClick={() => setActiveTabPanel('modulation')}
-              style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
+              style={{ flex: 1, padding: '8px 6px', fontSize: '0.8rem' }}
             >
-              🎙️ Voice Modulation
+              🎙️ Voice
             </Button>
             <Button
               variant={activeTabPanel === 'monitoring' ? 'primary' : 'secondary'}
               onClick={() => setActiveTabPanel('monitoring')}
-              style={{ flex: 1, padding: '8px 10px', fontSize: '0.85rem' }}
+              style={{ flex: 1, padding: '8px 6px', fontSize: '0.8rem' }}
             >
               🛡️ Monitoring
             </Button>
+            <Button
+              variant={activeTabPanel === 'memory' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTabPanel('memory')}
+              style={{ flex: 1, padding: '8px 6px', fontSize: '0.8rem' }}
+            >
+              🧠 Memory
+            </Button>
           </div>
 
-          {activeTabPanel === 'modulation' ? (
+          {activeTabPanel === 'modulation' && (
             <VoiceModulationControls
               onTestVoice={() => {
                 const testText = speechInputText.trim() || 'get me some water';
                 speakText(testText);
               }}
             />
-          ) : (
+          )}
+
+          {activeTabPanel === 'monitoring' && (
             <MonitoringSimulator
               emotionEngine={emotionEngineRef.current}
               onSpeakText={(text) => speakText(text)}
@@ -234,6 +244,10 @@ export const PlaygroundPage: React.FC = () => {
                 setEmotionRefreshKey((prev) => prev + 1);
               }}
             />
+          )}
+
+          {activeTabPanel === 'memory' && (
+            <MemoryPanel />
           )}
         </aside>
       </main>

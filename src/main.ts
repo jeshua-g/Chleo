@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'node:path';
+import fs from 'node:fs';
 import started from 'electron-squirrel-startup';
 import { startWebSocketServer } from './web-socket-server';
 
@@ -78,6 +79,31 @@ ipcMain.on('drag-window', (event: Electron.IpcMainEvent, dx: number, dy: number)
   if (win && typeof dx === 'number' && typeof dy === 'number') {
     const [x, y] = win.getPosition();
     win.setPosition(Math.round(x + dx), Math.round(y + dy));
+  }
+});
+
+// IPC handlers for Desktop Native memory file storage
+ipcMain.handle('save-memory-file', (_event, filename: string, content: string) => {
+  try {
+    const filePath = path.join(app.getPath('userData'), filename);
+    fs.writeFileSync(filePath, content, 'utf-8');
+    return true;
+  } catch (err) {
+    console.error(`[Main] Failed to save memory file ${filename}:`, err);
+    return false;
+  }
+});
+
+ipcMain.handle('read-memory-file', (_event, filename: string) => {
+  try {
+    const filePath = path.join(app.getPath('userData'), filename);
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf-8');
+    }
+    return null;
+  } catch (err) {
+    console.error(`[Main] Failed to read memory file ${filename}:`, err);
+    return null;
   }
 });
 

@@ -56,11 +56,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
     const llm = new LLMService();
     const rg = new ResponseGenerator(stm, llm);
     const be = new BehavioralEngine(emotionEngine, rg);
-    const rs = new RuleStore(be);
-
-    rs.setProductiveRewardIntervalSeconds(productiveRewardInterval);
-
-    const instance = new ActivityTracker(rs, stm, {
+    const rs = new RuleStore(be, {
       onEventTriggered: (payload, speechText) => {
         onRefreshEmotionState();
         onSpeakText(speechText);
@@ -70,6 +66,11 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
         setSiteRules([...rs.getSiteRules()]);
         setTickCounter((prev) => prev + 1);
       },
+    });
+
+    rs.setProductiveRewardIntervalSeconds(productiveRewardInterval);
+
+    const instance = new ActivityTracker(rs, stm, {
       onTick: () => {
         setSiteRules([...rs.getSiteRules()]);
         setTickCounter((prev) => prev + 1);
@@ -102,11 +103,12 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   };
 
   // Simulate visiting a domain
-  const handleVisitSite = (domain: string) => {
+  const handleVisitSite = async (domain: string) => {
     setCurrentDomain(domain);
-    if (!tracker) return;
+    if (!tracker || !ruleStore) return;
 
-    const result = tracker.handleSiteVisit(domain);
+    tracker.setActiveDomain(domain);
+    const result = await ruleStore.evaluateVisit(domain);
     if (result.isBlocked) {
       setActiveSiteStatus(`🚫 BLOCKED: Access restricted to ${domain}`);
     } else {
@@ -117,18 +119,15 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   };
 
   // Block a site
-  const handleBlockSite = (domain: string) => {
+  const handleBlockSite = async (domain: string) => {
     if (!ruleStore) return;
-    ruleStore.setBlockSite(domain);
-    refreshRules();
-    onSpeakText(`I have completely blocked ${domain}!`);
-    onRefreshEmotionState();
+    await ruleStore.setBlockSite(domain);
   };
 
   // Unblock via Puzzle Finish (with Anger & Sadness Penalty)
-  const handleUnblockWithPuzzle = (domain: string) => {
-    if (!tracker) return;
-    const result = tracker.completePuzzleAndUnblock(domain);
+  const handleUnblockWithPuzzle = async (domain: string) => {
+    if (!ruleStore) return;
+    await ruleStore.evaluatePuzzleUnblock(domain);
     setActiveSiteStatus(`🔓 Unblocked ${domain} after puzzle challenge`);
     refreshRules();
     refreshMemoryLogs();
@@ -144,12 +143,9 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   };
 
   // Mark productive
-  const handleToggleProductive = (domain: string, isProductive: boolean) => {
+  const handleToggleProductive = async (domain: string, isProductive: boolean) => {
     if (!ruleStore) return;
-    ruleStore.setSiteProductive(domain, isProductive);
-    refreshRules();
-    onSpeakText(`${domain} is now marked as ${isProductive ? 'productive' : 'neutral'}.`);
-    onRefreshEmotionState();
+    await ruleStore.setSiteProductive(domain, isProductive);
   };
 
   // Update penalty & reward settings
@@ -158,9 +154,11 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
     behavioralEngine.updateBehavioralRule('PUZZLE_UNBLOCK_PENALTY', {
       emotionDeltas: { anger: puzzleAngerDelta, sadness: puzzleSadnessDelta },
     });
+
     behavioralEngine.updateBehavioralRule('PRODUCTIVE_MILESTONE', {
       emotionDeltas: { joy: productiveJoyDelta, trust: 0.2 },
     });
+
     ruleStore.setProductiveRewardIntervalSeconds(productiveRewardInterval);
 
     onSpeakText('Updated penalty and reward rules!');
@@ -168,11 +166,11 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   };
 
   // Natural language command handler
-  const handleExecuteCommand = (e: React.FormEvent) => {
+  const handleExecuteCommand = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commandInput.trim() || !tracker) return;
+    if (!commandInput.trim() || !ruleStore) return;
 
-    const { responseText } = tracker.processCommand(commandInput);
+    const { responseText } = await ruleStore.processCommand(commandInput);
     onSpeakText(responseText);
     setCommandInput('');
     refreshRules();
@@ -219,7 +217,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
                 <div style={{
                   width: '100%',
                   height: '8px',
-                  background: '#e2e8f0',
+                  background: 'var(--bg-card, #fffbf5)',
                   borderRadius: '4px',
                   marginTop: '4px',
                   overflow: 'hidden',
@@ -238,10 +236,10 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
           {/* Quick Domain Visit Buttons */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px' }}>
-            <Button variant="activity" onClick={() => handleVisitSite('youtube.com')}>Visit YouTube</Button>
-            <Button variant="activity" onClick={() => handleVisitSite('facebook.com')}>Visit Facebook</Button>
-            <Button variant="activity" onClick={() => handleVisitSite('github.com')}>Visit GitHub</Button>
-            <Button variant="activity" onClick={() => handleVisitSite('twitter.com')}>Visit Twitter</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('youtube.com')}>📺 YouTube</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('facebook.com')}>👥 Facebook</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('github.com')}>💻 GitHub</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('twitter.com')}>🐦 Twitter</Button>
           </div>
         </div>
 
@@ -259,15 +257,16 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
               border: '2px solid var(--border-pixel, #2d2424)',
               fontSize: '0.85rem',
               fontFamily: 'var(--font-body)',
-              background: '#fffbf5',
+              background: 'var(--bg-card, #fffbf5)',
+              color: 'var(--text-dark, #2d2424)',
             }}
           />
-          <Button variant="primary" type="submit">Run Command</Button>
+          <Button variant="primary" type="submit">⚡ Run Command</Button>
         </form>
 
         {/* Quick Rule Configurator */}
         <div style={{ background: 'var(--bg-card-secondary, #f4ece0)', padding: '10px 12px', borderRadius: '8px', border: '2px solid var(--border-pixel, #2d2424)' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '8px' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '8px', color: 'var(--text-dark, #2d2424)' }}>
             ⚙️ Quick Site Limit Configurator
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -276,41 +275,41 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
               value={limitDomain}
               onChange={(e) => setLimitDomain(e.target.value)}
               placeholder="Domain"
-              style={{ width: '120px', padding: '6px', fontSize: '0.8rem', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '6px', background: '#fff' }}
+              style={{ width: '120px', padding: '6px', fontSize: '0.8rem', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '6px', background: 'var(--bg-card, #fffbf5)', color: 'var(--text-dark, #2d2424)' }}
             />
             <input
               type="number"
               value={limitSecondsInput}
               onChange={(e) => setLimitSecondsInput(Number(e.target.value))}
               placeholder="Seconds"
-              style={{ width: '70px', padding: '6px', fontSize: '0.8rem', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '6px', background: '#fff' }}
+              style={{ width: '70px', padding: '6px', fontSize: '0.8rem', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '6px', background: 'var(--bg-card, #fffbf5)', color: 'var(--text-dark, #2d2424)' }}
             />
-            <span style={{ fontSize: '0.8rem' }}>seconds</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-dark, #2d2424)' }}>seconds</span>
             <Button variant="secondary" onClick={() => handleSetLimit(limitDomain, limitSecondsInput)}>
-              Set Limit
+              ⏱️ Set Limit
             </Button>
           </div>
         </div>
 
         {/* Site Rules Table */}
         <div>
-          <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '6px' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '6px', color: 'var(--text-dark, #2d2424)' }}>
             📋 Active Site Monitoring Rules:
           </div>
-          <div style={{ maxHeight: '180px', overflowY: 'auto', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '8px', background: '#fffbf5' }}>
+          <div style={{ maxHeight: '180px', overflowY: 'auto', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '8px', background: 'var(--bg-card, #fffbf5)' }}>
             <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: 'var(--bg-card-secondary, #f4ece0)', textAlign: 'left', fontFamily: 'var(--font-pixel)', borderBottom: '2px solid var(--border-pixel, #2d2424)' }}>
-                  <th style={{ padding: '6px 8px' }}>Domain</th>
-                  <th style={{ padding: '6px 8px' }}>Type</th>
-                  <th style={{ padding: '6px 8px' }}>Usage / Limit</th>
-                  <th style={{ padding: '6px 8px' }}>Actions</th>
+                  <th style={{ padding: '6px 8px', color: 'var(--text-dark, #2d2424)' }}>Domain</th>
+                  <th style={{ padding: '6px 8px', color: 'var(--text-dark, #2d2424)' }}>Type</th>
+                  <th style={{ padding: '6px 8px', color: 'var(--text-dark, #2d2424)' }}>Usage / Limit</th>
+                  <th style={{ padding: '6px 8px', color: 'var(--text-dark, #2d2424)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {siteRules.map((rule) => (
-                  <tr key={rule.domain} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '6px 8px', fontWeight: 'bold' }}>{rule.domain}</td>
+                  <tr key={rule.domain} style={{ borderBottom: '1px solid rgba(45, 36, 36, 0.12)' }}>
+                    <td style={{ padding: '6px 8px', fontWeight: 'bold', color: 'var(--text-dark, #2d2424)' }}>{rule.domain}</td>
                     <td style={{ padding: '6px 8px' }}>
                       <span style={{
                         padding: '2px 6px',
@@ -321,12 +320,12 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
                         background:
                           rule.type === 'blocked' ? '#e53935' :
                             rule.type === 'avoid' ? '#fb8c00' :
-                              rule.type === 'productive' ? '#43a047' : '#757575'
+                              rule.type === 'productive' ? '#43a047' : '#8c7b75'
                       }}>
                         {rule.type.toUpperCase()}
                       </span>
                     </td>
-                    <td style={{ padding: '6px 8px' }}>
+                    <td style={{ padding: '6px 8px', color: 'var(--text-dark, #2d2424)' }}>
                       {rule.dailyLimitSeconds > 0 ? `${rule.spentTodaySeconds}s / ${rule.dailyLimitSeconds}s` : `${rule.spentTodaySeconds}s`}
                     </td>
                     <td style={{ padding: '6px 8px' }}>
@@ -369,59 +368,59 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
         {/* Modifiable Penalties & Rewards Controls */}
         <div style={{ background: 'var(--bg-card-secondary, #f4ece0)', padding: '10px 12px', borderRadius: '8px', border: '2px solid var(--border-pixel, #2d2424)' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '8px' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '8px', color: 'var(--text-dark, #2d2424)' }}>
             🛠️ Modify Emotion Penalties &amp; Reward Rules:
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600 }}>Puzzle Anger Delta:</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dark, #2d2424)' }}>Puzzle Anger Delta:</label>
               <input
                 type="number"
                 step="0.05"
                 value={puzzleAngerDelta}
                 onChange={(e) => setPuzzleAngerDelta(Number(e.target.value))}
-                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: '#fff' }}
+                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: 'var(--bg-card, #fffbf5)', color: 'var(--text-dark, #2d2424)' }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600 }}>Puzzle Sadness Delta:</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dark, #2d2424)' }}>Puzzle Sadness Delta:</label>
               <input
                 type="number"
                 step="0.05"
                 value={puzzleSadnessDelta}
                 onChange={(e) => setPuzzleSadnessDelta(Number(e.target.value))}
-                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: '#fff' }}
+                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: 'var(--bg-card, #fffbf5)', color: 'var(--text-dark, #2d2424)' }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600 }}>Productive Reward (sec):</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dark, #2d2424)' }}>Productive Reward (sec):</label>
               <input
                 type="number"
                 step="5"
                 value={productiveRewardInterval}
                 onChange={(e) => setProductiveRewardInterval(Number(e.target.value))}
-                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: '#fff' }}
+                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: 'var(--bg-card, #fffbf5)', color: 'var(--text-dark, #2d2424)' }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600 }}>Productive Joy Boost:</label>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-dark, #2d2424)' }}>Productive Joy Boost:</label>
               <input
                 type="number"
                 step="0.05"
                 value={productiveJoyDelta}
                 onChange={(e) => setProductiveJoyDelta(Number(e.target.value))}
-                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: '#fff' }}
+                style={{ width: '100%', padding: '4px', marginTop: '2px', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '4px', background: 'var(--bg-card, #fffbf5)', color: 'var(--text-dark, #2d2424)' }}
               />
             </div>
           </div>
           <Button variant="primary" onClick={handleUpdatePenalties} style={{ marginTop: '10px', width: '100%' }}>
-            Save Penalty &amp; Reward Rules
+            💾 Save Penalty &amp; Reward Rules
           </Button>
         </div>
 
         {/* Short-Term Memory Preview - Scrollable fixed height */}
         <div style={{
-          background: '#fffbf5',
+          background: 'var(--bg-card, #fffbf5)',
           padding: '10px 12px',
           borderRadius: '8px',
           border: '2px solid var(--border-pixel, #2d2424)',
@@ -436,7 +435,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
             ) : (
               <ul style={{ margin: 0, paddingLeft: '16px' }}>
                 {memoryEvents.map((evt) => (
-                  <li key={evt.id} style={{ marginBottom: '3px' }}>
+                  <li key={evt.id} style={{ marginBottom: '3px', color: 'var(--text-dark, #2d2424)' }}>
                     <strong>[{new Date(evt.timestamp).toLocaleTimeString()}] {evt.type.toUpperCase()}:</strong> {evt.details}
                   </li>
                 ))}
