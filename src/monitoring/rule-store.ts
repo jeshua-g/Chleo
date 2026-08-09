@@ -169,7 +169,7 @@ export class RuleStore {
    * Evaluate a single tick for the given domain. Handles rule lookup,
    * time increment, warning/exceeded/milestone checks, and behavioral reactions.
    */
-  evaluateTick(domain: string, deltaSeconds: number, isWarningActive: (d: string) => boolean, setWarning: (d: string, percent: number) => void): TickResult {
+  async evaluateTick(domain: string, deltaSeconds: number, isWarningActive: (d: string) => boolean, setWarning: (d: string, percent: number) => void): Promise<TickResult> {
     let rule = this.findRuleForDomain(domain);
 
     // Blocked: don't increment time
@@ -210,7 +210,7 @@ export class RuleStore {
           siteType: 'blocked',
         };
 
-        const result = this.behavioralEngine.processEvent(payload);
+        const result = await this.behavioralEngine.processEvent(payload);
         return {
           domain,
           spentTodaySeconds: spent,
@@ -234,7 +234,7 @@ export class RuleStore {
           siteType: 'avoid',
         };
 
-        const result = this.behavioralEngine.processEvent(payload);
+        const result = await this.behavioralEngine.processEvent(payload);
         return {
           domain,
           spentTodaySeconds: spent,
@@ -262,7 +262,7 @@ export class RuleStore {
           siteType: 'productive',
         };
 
-        const result = this.behavioralEngine.processEvent(payload);
+        const result = await this.behavioralEngine.processEvent(payload);
         return {
           domain,
           spentTodaySeconds: rule.spentTodaySeconds,
@@ -284,7 +284,7 @@ export class RuleStore {
   /**
    * Evaluate a site visit (used by handleSiteVisit).
    */
-  evaluateVisit(domain: string): TickResult {
+  async evaluateVisit(domain: string): Promise<TickResult> {
     const rule = this.findRuleForDomain(domain);
 
     if (rule && rule.type === 'blocked') {
@@ -298,7 +298,7 @@ export class RuleStore {
         siteType: 'blocked',
       };
 
-      const result = this.behavioralEngine.processEvent(payload);
+      const result = await this.behavioralEngine.processEvent(payload);
       return {
         domain,
         spentTodaySeconds: rule.spentTodaySeconds,
@@ -314,7 +314,7 @@ export class RuleStore {
   /**
    * Evaluate puzzle unblock (used by completePuzzleAndUnblock).
    */
-  evaluatePuzzleUnblock(domain: string): TickResult {
+  async evaluatePuzzleUnblock(domain: string): Promise<TickResult> {
     const rule = this.setUnblockSite(domain);
 
     const payload: MonitoringEventPayload = {
@@ -327,7 +327,7 @@ export class RuleStore {
       siteType: 'neutral',
     };
 
-    const result = this.behavioralEngine.processEvent(payload);
+    const result = await this.behavioralEngine.processEvent(payload);
     return {
       domain,
       spentTodaySeconds: rule.spentTodaySeconds,

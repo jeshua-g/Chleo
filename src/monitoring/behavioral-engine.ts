@@ -117,7 +117,7 @@ export class BehavioralEngine {
    * Match an event to a behavioral rule, apply emotion deltas,
    * and delegate speech generation + memory recording to ResponseGenerator.
    */
-  processEvent(event: MonitoringEventPayload): BehavioralReactionResult | null {
+  async processEvent(event: MonitoringEventPayload): Promise<BehavioralReactionResult | null> {
     const matchingRule = this.behavioralConfig.rules.find(
       (r) =>
         r.conditions.event === event.eventId ||
@@ -134,7 +134,7 @@ export class BehavioralEngine {
     this.emotionOrchestrator.applyBehavioralData(matchingRule.emotionDeltas);
 
     // Delegate speech generation + memory recording to ResponseGenerator
-    const response: ResponseResult = this.responseGenerator.generateResponseSync(event, matchingRule);
+    const response: ResponseResult = await this.responseGenerator.generateResponse(event, matchingRule);
 
     return {
       rule: matchingRule,

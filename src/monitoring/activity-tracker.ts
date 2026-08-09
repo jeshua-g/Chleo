@@ -56,7 +56,7 @@ export class ActivityTracker {
    * Main 1-second tick loop evaluation.
    * Only interacts with RuleStore — all behavioral/memory logic is handled downstream.
    */
-  private onTick(): void {
+  private async onTick(): Promise<void> {
     if (!this.activeDomain) return;
 
     // Check end-of-day date change for memory consolidation
@@ -66,8 +66,7 @@ export class ActivityTracker {
       this.shortTermMemory.consolidateToLongTermMemory('day_change');
     }
 
-    // Delegate all rule evaluation + behavioral reactions to RuleStore
-    const result: TickResult = this.ruleStore.evaluateTick(
+    const result: TickResult = await this.ruleStore.evaluateTick(
       this.activeDomain,
       1,
       (d) => this.shortTermMemory.isWarningActive(d),
@@ -90,7 +89,7 @@ export class ActivityTracker {
   /**
    * Handle website visitation event from Chrome Extension or Simulator.
    */
-  handleSiteVisit(url: string, title?: string): { isBlocked: boolean; speechText?: string } {
+  async handleSiteVisit(url: string, title?: string): Promise<{ isBlocked: boolean; speechText?: string }> {
     let domain = url;
     try {
       if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -101,7 +100,7 @@ export class ActivityTracker {
     this.activeDomain = domain;
     this.shortTermMemory.setActiveDomain(domain);
 
-    const result = this.ruleStore.evaluateVisit(domain);
+    const result = await this.ruleStore.evaluateVisit(domain);
 
     if (result.isBlocked) {
       if (result.reaction && this.listeners.onEventTriggered) {
@@ -117,8 +116,8 @@ export class ActivityTracker {
    * Execute unblock puzzle finish action.
    * Unblocks website but applies anger and sadness penalty to Chleo!
    */
-  completePuzzleAndUnblock(domain: string): { rule: SiteRule; speechText: string } {
-    const result = this.ruleStore.evaluatePuzzleUnblock(domain);
+  async completePuzzleAndUnblock(domain: string): Promise<{ rule: SiteRule; speechText: string }> {
+    const result = await this.ruleStore.evaluatePuzzleUnblock(domain);
     const rule = this.ruleStore.findRuleForDomain(domain)!;
 
     if (result.reaction && this.listeners.onEventTriggered) {

@@ -32,7 +32,9 @@ export class ResponseGenerator {
     rule: BehavioralRule
   ): Promise<ResponseResult> {
     // Try LLM first
-    const llmResult = await this.llmService.generate(event, rule.llmDirective);
+    // COMPOSE memory context and place it in memory context 
+    const memoryContext: string = "";
+    const llmResult = await this.llmService.generate(event, rule.llmDirective, memoryContext);
 
     let speechText: string;
     let responseType: ResponseType;
@@ -45,29 +47,6 @@ export class ResponseGenerator {
       speechText = this.interpolateTemplate(rule.heuristicTemplates, event);
       responseType = 'exclamatory';
     }
-
-    // Record in Short-Term Memory
-    this.shortTermMemory.recordEvent({
-      type: event.eventId.toLowerCase(),
-      domain: event.domain,
-      details: speechText,
-      emotionDelta: rule.emotionDeltas,
-    });
-    this.shortTermMemory.recordSpeech(speechText);
-
-    return { speechText, responseType };
-  }
-
-  /**
-   * Synchronous version for cases where async is not needed (no LLM call).
-   * Uses heuristic templates only.
-   */
-  generateResponseSync(
-    event: MonitoringEventPayload,
-    rule: BehavioralRule
-  ): ResponseResult {
-    const speechText = this.interpolateTemplate(rule.heuristicTemplates, event);
-    const responseType: ResponseType = 'exclamatory';
 
     // Record in Short-Term Memory
     this.shortTermMemory.recordEvent({
