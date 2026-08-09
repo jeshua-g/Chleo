@@ -1,11 +1,14 @@
-import type { PrimaryEmotion, EmotionalState, PlutchikEmotion } from '../avatar/emotions/emotion-types';
+import type { PrimaryEmotion, EmotionalState } from '../avatar/emotions/emotion-types';
+
+export type MemoryConsolidationReason = 'threshold' | 'day_change' | 'memorable_event';
 
 export interface ShortTermMemoryEvent {
   id: string;
   timestamp: number;
-  type: 'visit' | 'blocked_attempt' | 'warning' | 'limit_exceeded' | 'productive_milestone' | 'puzzle_unblock' | 'command';
+  type: string;
   domain?: string;
   details: string;
+  formattedText?: string;
   emotionDelta?: Partial<Record<PrimaryEmotion, number>>;
 }
 
@@ -31,3 +34,4 @@ export interface LongTermMemoryData {
     waketime?: string;
   };
 }
+

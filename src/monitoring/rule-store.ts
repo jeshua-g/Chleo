@@ -1,21 +1,21 @@
-import type { SiteRule, SiteType, BehavioralRule, MonitoringConfig, BehavioralConfig } from './monitoring-types';
+import type { SiteRule, SiteType, MonitoringConfig, MonitoringEventPayload, TickResult } from './monitoring-types';
+import { BehavioralEngine } from './behavioral-engine';
 import defaultActivityRules from './config/activity-rules.json';
-import defaultBehavioralRules from './config/behavioral-rules.json';
 
 /**
- * RuleStore manages reading, writing, and updating site rules and behavioral rules
- * at runtime, persisting changes to localStorage or local state.
+ * RuleStore manages site rules only: reading, writing, and updating domain rules
+ * at runtime. Delegates behavioral reactions to BehavioralEngine.
  */
 //[ADD] rules should be saved and loaded for persistence
 export class RuleStore {
   private activityConfig: MonitoringConfig;
-  private behavioralConfig: BehavioralConfig;
+  private behavioralEngine: BehavioralEngine;
   private storageKeyActivity = 'chleo_activity_rules_v1';
-  private storageKeyBehavioral = 'chleo_behavioral_rules_v1';
+  private cumulativeProductiveSeconds: number = 0;
 
-  constructor() {
+  constructor(behavioralEngine: BehavioralEngine) {
+    this.behavioralEngine = behavioralEngine;
     this.activityConfig = this.loadActivityConfig();
-    this.behavioralConfig = this.loadBehavioralConfig();
   }
 
   private loadActivityConfig(): MonitoringConfig {
@@ -30,31 +30,6 @@ export class RuleStore {
     return JSON.parse(JSON.stringify(defaultActivityRules)) as MonitoringConfig;
   }
 
-  private loadBehavioralConfig(): BehavioralConfig {
-    const defaults = JSON.parse(JSON.stringify(defaultBehavioralRules)) as BehavioralConfig;
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const raw = window.localStorage.getItem(this.storageKeyBehavioral);
-        if (raw) {
-          const parsed = JSON.parse(raw) as BehavioralConfig;
-          defaults.rules.forEach((defRule) => {
-            const storedRule = parsed.rules.find((r) => r.id === defRule.id);
-            if (storedRule) {
-              storedRule.emotionDeltas = defRule.emotionDeltas;
-              storedRule.conditions = defRule.conditions;
-            } else {
-              parsed.rules.push(defRule);
-            }
-          });
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.warn('[RuleStore] Failed to load behavioral rules from storage:', e);
-    }
-    return defaults;
-  }
-
   saveActivityConfig(): void {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -65,17 +40,8 @@ export class RuleStore {
     }
   }
 
-  saveBehavioralConfig(): void {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(this.storageKeyBehavioral, JSON.stringify(this.behavioralConfig));
-      }
-    } catch (e) {
-      console.warn('[RuleStore] Failed to save behavioral rules:', e);
-    }
-  }
-
   // --- Site Rules Methods ---
+
   getSiteRules(): SiteRule[] {
     return this.activityConfig.rules;
   }
@@ -88,8 +54,8 @@ export class RuleStore {
     });
   }
 
-  setBlockSite(domain: string): SiteRule {
-    let rule = this.findRuleForDomain(domain);
+  setBlockSite(domain: string, useThisRule?: SiteRule): SiteRule {
+    let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
         domain,
@@ -108,8 +74,8 @@ export class RuleStore {
     return rule;
   }
 
-  setUnblockSite(domain: string): SiteRule {
-    let rule = this.findRuleForDomain(domain);
+  setUnblockSite(domain: string, useThisRule?: SiteRule): SiteRule {
+    let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
         domain,
@@ -128,8 +94,8 @@ export class RuleStore {
     return rule;
   }
 
-  setSiteLimit(domain: string, dailyLimitSeconds: number): SiteRule {
-    let rule = this.findRuleForDomain(domain);
+  setSiteLimit(domain: string, dailyLimitSeconds: number, useThisRule?: SiteRule): SiteRule {
+    let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
         domain,
@@ -149,8 +115,8 @@ export class RuleStore {
     return rule;
   }
 
-  setSiteProductive(domain: string, isProductive: boolean): SiteRule {
-    let rule = this.findRuleForDomain(domain);
+  setSiteProductive(domain: string, isProductive: boolean, useThisRule?: SiteRule): SiteRule {
+    let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
         domain,
@@ -168,8 +134,8 @@ export class RuleStore {
     return rule;
   }
 
-  updateSpentTime(domain: string, deltaSeconds: number): void {
-    let rule = this.findRuleForDomain(domain);
+  updateSpentTime(domain: string, deltaSeconds: number, useThisRule?: SiteRule): SiteRule {
+    let rule = useThisRule ? useThisRule : this.findRuleForDomain(domain);
     if (!rule) {
       rule = {
         domain,
@@ -183,27 +149,8 @@ export class RuleStore {
     } else {
       rule.spentTodaySeconds += deltaSeconds;
     }
+
     this.saveActivityConfig();
-  }
-
-  // --- Behavioral Rules & Penalty/Reward Methods ---
-  getBehavioralRules(): BehavioralRule[] {
-    return this.behavioralConfig.rules;
-  }
-
-  getBehavioralRule(id: string): BehavioralRule | undefined {
-    return this.behavioralConfig.rules.find((r) => r.id === id);
-  }
-
-  updateBehavioralRule(id: string, updates: Partial<BehavioralRule>): BehavioralRule | undefined {
-    const rule = this.getBehavioralRule(id);
-    if (rule) {
-      if (updates.emotionDeltas) rule.emotionDeltas = { ...rule.emotionDeltas, ...updates.emotionDeltas };
-      if (updates.rewards) rule.rewards = { ...rule.rewards, ...updates.rewards };
-      if (updates.heuristicTemplates) rule.heuristicTemplates = [...updates.heuristicTemplates];
-      if (updates.llmDirective) rule.llmDirective = updates.llmDirective;
-      this.saveBehavioralConfig();
-    }
     return rule;
   }
 
@@ -216,12 +163,197 @@ export class RuleStore {
     this.saveActivityConfig();
   }
 
+  // --- Tick Evaluation (moved from ActivityTracker.onTick) ---
+
+  /**
+   * Evaluate a single tick for the given domain. Handles rule lookup,
+   * time increment, warning/exceeded/milestone checks, and behavioral reactions.
+   */
+  evaluateTick(domain: string, deltaSeconds: number, isWarningActive: (d: string) => boolean, setWarning: (d: string, percent: number) => void): TickResult {
+    let rule = this.findRuleForDomain(domain);
+
+    // Blocked: don't increment time
+    if (rule && rule.type === 'blocked') {
+      return {
+        domain,
+        spentTodaySeconds: rule.spentTodaySeconds,
+        isBlocked: true,
+        ruleChanged: false,
+      };
+    }
+
+    // Increment spent time
+    rule = this.updateSpentTime(domain, deltaSeconds, rule);
+
+    if (!rule) {
+      return { domain, spentTodaySeconds: 0, isBlocked: false, ruleChanged: false };
+    }
+
+    // Avoid: check warning/exceeded
+    if (rule.type === 'avoid' && rule.dailyLimitSeconds > 0) {
+      const spent = rule.spentTodaySeconds;
+      const limit = rule.dailyLimitSeconds;
+      const percent = (spent / limit) * 100;
+      const remaining = Math.max(0, limit - spent);
+
+      // Exceeded
+      if (spent >= limit) {
+        rule = this.setBlockSite(domain, rule);
+
+        const payload: MonitoringEventPayload = {
+          eventId: 'LIMIT_EXCEEDED',
+          domain,
+          timeSpentSeconds: spent,
+          limitSeconds: limit,
+          percentSpent: 100,
+          remainingSeconds: 0,
+          siteType: 'blocked',
+        };
+
+        const result = this.behavioralEngine.processEvent(payload);
+        return {
+          domain,
+          spentTodaySeconds: spent,
+          isBlocked: true,
+          ruleChanged: true,
+          reaction: result ? { payload, speechText: result.speechText } : undefined,
+        };
+      }
+
+      // Warning threshold
+      if (percent >= rule.warningThresholdPercent && !isWarningActive(domain)) {
+        setWarning(domain, percent);
+
+        const payload: MonitoringEventPayload = {
+          eventId: 'LIMIT_WARNING',
+          domain,
+          timeSpentSeconds: spent,
+          limitSeconds: limit,
+          percentSpent: remaining,
+          remainingSeconds: remaining,
+          siteType: 'avoid',
+        };
+
+        const result = this.behavioralEngine.processEvent(payload);
+        return {
+          domain,
+          spentTodaySeconds: spent,
+          isBlocked: false,
+          ruleChanged: false,
+          reaction: result ? { payload, speechText: result.speechText } : undefined,
+        };
+      }
+    }
+
+    // Productive: check milestone
+    if (rule.type === 'productive') {
+      this.cumulativeProductiveSeconds += deltaSeconds;
+      const rewardInterval = this.getProductiveRewardIntervalSeconds();
+
+      if (this.cumulativeProductiveSeconds > 0 &&
+        this.cumulativeProductiveSeconds % rewardInterval === 0) {
+        const payload: MonitoringEventPayload = {
+          eventId: 'PRODUCTIVE_MILESTONE',
+          domain,
+          timeSpentSeconds: this.cumulativeProductiveSeconds,
+          limitSeconds: rewardInterval,
+          percentSpent: 100,
+          remainingSeconds: 0,
+          siteType: 'productive',
+        };
+
+        const result = this.behavioralEngine.processEvent(payload);
+        return {
+          domain,
+          spentTodaySeconds: rule.spentTodaySeconds,
+          isBlocked: false,
+          ruleChanged: false,
+          reaction: result ? { payload, speechText: result.speechText } : undefined,
+        };
+      }
+    }
+
+    return {
+      domain,
+      spentTodaySeconds: rule.spentTodaySeconds,
+      isBlocked: false,
+      ruleChanged: false,
+    };
+  }
+
+  /**
+   * Evaluate a site visit (used by handleSiteVisit).
+   */
+  evaluateVisit(domain: string): TickResult {
+    const rule = this.findRuleForDomain(domain);
+
+    if (rule && rule.type === 'blocked') {
+      const payload: MonitoringEventPayload = {
+        eventId: 'SITE_BLOCKED_VISIT',
+        domain,
+        timeSpentSeconds: rule.spentTodaySeconds,
+        limitSeconds: rule.dailyLimitSeconds,
+        percentSpent: 100,
+        remainingSeconds: 0,
+        siteType: 'blocked',
+      };
+
+      const result = this.behavioralEngine.processEvent(payload);
+      return {
+        domain,
+        spentTodaySeconds: rule.spentTodaySeconds,
+        isBlocked: true,
+        ruleChanged: false,
+        reaction: result ? { payload, speechText: result.speechText } : undefined,
+      };
+    }
+
+    return { domain, spentTodaySeconds: rule?.spentTodaySeconds || 0, isBlocked: false, ruleChanged: false };
+  }
+
+  /**
+   * Evaluate puzzle unblock (used by completePuzzleAndUnblock).
+   */
+  evaluatePuzzleUnblock(domain: string): TickResult {
+    const rule = this.setUnblockSite(domain);
+
+    const payload: MonitoringEventPayload = {
+      eventId: 'PUZZLE_UNBLOCK_PENALTY',
+      domain,
+      timeSpentSeconds: rule.spentTodaySeconds,
+      limitSeconds: rule.dailyLimitSeconds,
+      percentSpent: 0,
+      remainingSeconds: 0,
+      siteType: 'neutral',
+    };
+
+    const result = this.behavioralEngine.processEvent(payload);
+    return {
+      domain,
+      spentTodaySeconds: rule.spentTodaySeconds,
+      isBlocked: false,
+      ruleChanged: true,
+      reaction: result ? { payload, speechText: result.speechText } : undefined,
+    };
+  }
+
+  /**
+   * Trigger day-change consolidation through the behavioral engine's chain.
+   */
+  triggerDayChangeConsolidation(): void {
+    // Reach into the chain: BehavioralEngine → ResponseGenerator → ShortTermMemory → LTM
+    // For now, we expose this as a pass-through. The ShortTermMemory handles consolidation internally.
+    // This is called by ActivityTracker when a date change is detected.
+    console.log('[RuleStore] Day change consolidation triggered via chain');
+  }
+
+  getBehavioralEngine(): BehavioralEngine {
+    return this.behavioralEngine;
+  }
+
   resetAllRules(): void {
     this.activityConfig = JSON.parse(JSON.stringify(defaultActivityRules));
-    this.behavioralConfig = JSON.parse(JSON.stringify(defaultBehavioralRules));
     this.saveActivityConfig();
-    this.saveBehavioralConfig();
+    this.behavioralEngine.resetBehavioralRules();
   }
 }
-
-export const defaultRuleStore = new RuleStore();

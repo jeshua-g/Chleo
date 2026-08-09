@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { PanelSection, Button } from './ui';
-import { ActivityTracker, defaultRuleStore, SiteRule } from '../../src/monitoring';
-import { defaultShortTermMemory } from '../../src/memory/short-term-memory';
-import { defaultLongTermMemory } from '../../src/memory/long-term-memory';
+import {
+  ActivityTracker,
+  RuleStore,
+  BehavioralEngine,
+  ResponseGenerator,
+  LLMService,
+  SiteRule,
+} from '../../src/monitoring';
+import { ShortTermMemory } from '../../src/memory/short-term-memory';
+import { LongTermMemory } from '../../src/memory/long-term-memory';
 import { EmotionsOrchestrator } from '../../src/avatar/emotions/emotions-orchestrator';
 
 interface MonitoringSimulatorProps {
@@ -17,6 +24,10 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   onRefreshEmotionState,
 }) => {
   const [tracker, setTracker] = useState<ActivityTracker | null>(null);
+  const [ruleStore, setRuleStore] = useState<RuleStore | null>(null);
+  const [behavioralEngine, setBehavioralEngine] = useState<BehavioralEngine | null>(null);
+  const [shortTermMemory, setShortTermMemory] = useState<ShortTermMemory | null>(null);
+
   const [siteRules, setSiteRules] = useState<SiteRule[]>([]);
   const [currentDomain, setCurrentDomain] = useState<string>('youtube.com');
   const [activeSiteStatus, setActiveSiteStatus] = useState<string>('Visiting youtube.com');
@@ -38,46 +49,56 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   // Memory log preview
   const [memoryEvents, setMemoryEvents] = useState<any[]>([]);
 
-  // Initialize ActivityTracker instance
+  // Initialize ActivityTracker and dependency chain
   useEffect(() => {
-    defaultRuleStore.setProductiveRewardIntervalSeconds(productiveRewardInterval);
+    const ltm = new LongTermMemory();
+    const stm = new ShortTermMemory(ltm);
+    const llm = new LLMService();
+    const rg = new ResponseGenerator(stm, llm);
+    const be = new BehavioralEngine(emotionEngine, rg);
+    const rs = new RuleStore(be);
 
-    const instance = new ActivityTracker(
-      defaultRuleStore,
-      defaultShortTermMemory,
-      defaultLongTermMemory,
-      emotionEngine,
-      {
-        onEventTriggered: (payload, speechText) => {
-          onRefreshEmotionState();
-          onSpeakText(speechText);
-          refreshMemoryLogs();
-        },
-        onRuleChanged: () => {
-          refreshRules();
-        },
-        onTick: () => {
-          refreshRules();
-        },
-      }
-    );
+    rs.setProductiveRewardIntervalSeconds(productiveRewardInterval);
+
+    const instance = new ActivityTracker(rs, stm, {
+      onEventTriggered: (payload, speechText) => {
+        onRefreshEmotionState();
+        onSpeakText(speechText);
+        setMemoryEvents([...stm.getRecentEvents(10)]);
+      },
+      onRuleChanged: () => {
+        setSiteRules([...rs.getSiteRules()]);
+        setTickCounter((prev) => prev + 1);
+      },
+      onTick: () => {
+        setSiteRules([...rs.getSiteRules()]);
+        setTickCounter((prev) => prev + 1);
+      },
+    });
 
     setTracker(instance);
-    setSiteRules(defaultRuleStore.getSiteRules());
-    refreshMemoryLogs();
+    setRuleStore(rs);
+    setBehavioralEngine(be);
+    setShortTermMemory(stm);
+    setSiteRules(rs.getSiteRules());
+    setMemoryEvents([...stm.getRecentEvents(10)]);
 
     return () => {
       instance.stopTicker();
     };
-  }, []);
+  }, [emotionEngine]);
 
   const refreshRules = () => {
-    setSiteRules([...defaultRuleStore.getSiteRules()]);
-    setTickCounter((prev) => prev + 1);
+    if (ruleStore) {
+      setSiteRules([...ruleStore.getSiteRules()]);
+      setTickCounter((prev) => prev + 1);
+    }
   };
 
   const refreshMemoryLogs = () => {
-    setMemoryEvents([...defaultShortTermMemory.getRecentEvents(10)]);
+    if (shortTermMemory) {
+      setMemoryEvents([...shortTermMemory.getRecentEvents(10)]);
+    }
   };
 
   // Simulate visiting a domain
@@ -97,13 +118,14 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
   // Block a site
   const handleBlockSite = (domain: string) => {
-    defaultRuleStore.setBlockSite(domain);
+    if (!ruleStore) return;
+    ruleStore.setBlockSite(domain);
     refreshRules();
     onSpeakText(`I have completely blocked ${domain}!`);
     onRefreshEmotionState();
   };
 
-  //  Unblock via Puzzle Finish (with Anger & Sadness Penalty)
+  // Unblock via Puzzle Finish (with Anger & Sadness Penalty)
   const handleUnblockWithPuzzle = (domain: string) => {
     if (!tracker) return;
     const result = tracker.completePuzzleAndUnblock(domain);
@@ -114,7 +136,8 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
   // Set time limit on site
   const handleSetLimit = (domain: string, seconds: number) => {
-    defaultRuleStore.setSiteLimit(domain, seconds);
+    if (!ruleStore) return;
+    ruleStore.setSiteLimit(domain, seconds);
     refreshRules();
     onSpeakText(`Set daily limit of ${seconds} seconds for ${domain}.`);
     onRefreshEmotionState();
@@ -122,7 +145,8 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
   // Mark productive
   const handleToggleProductive = (domain: string, isProductive: boolean) => {
-    defaultRuleStore.setSiteProductive(domain, isProductive);
+    if (!ruleStore) return;
+    ruleStore.setSiteProductive(domain, isProductive);
     refreshRules();
     onSpeakText(`${domain} is now marked as ${isProductive ? 'productive' : 'neutral'}.`);
     onRefreshEmotionState();
@@ -130,13 +154,14 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
   // Update penalty & reward settings
   const handleUpdatePenalties = () => {
-    defaultRuleStore.updateBehavioralRule('PUZZLE_UNBLOCK_PENALTY', {
+    if (!ruleStore || !behavioralEngine) return;
+    behavioralEngine.updateBehavioralRule('PUZZLE_UNBLOCK_PENALTY', {
       emotionDeltas: { anger: puzzleAngerDelta, sadness: puzzleSadnessDelta },
     });
-    defaultRuleStore.updateBehavioralRule('PRODUCTIVE_MILESTONE', {
+    behavioralEngine.updateBehavioralRule('PRODUCTIVE_MILESTONE', {
       emotionDeltas: { joy: productiveJoyDelta, trust: 0.2 },
     });
-    defaultRuleStore.setProductiveRewardIntervalSeconds(productiveRewardInterval);
+    ruleStore.setProductiveRewardIntervalSeconds(productiveRewardInterval);
 
     onSpeakText('Updated penalty and reward rules!');
     onRefreshEmotionState();
@@ -154,7 +179,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
     refreshMemoryLogs();
   };
 
-  const activeRule = defaultRuleStore.findRuleForDomain(currentDomain);
+  const activeRule = ruleStore?.findRuleForDomain(currentDomain);
 
   return (
     <PanelSection

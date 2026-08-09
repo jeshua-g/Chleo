@@ -1,25 +1,76 @@
-import type { ShortTermMemoryEvent, ActiveWarningState } from './memory-types';
+import type { ShortTermMemoryEvent, ActiveWarningState, MemoryConsolidationReason } from './memory-types';
+import { LongTermMemory } from './long-term-memory';
+import type { PrimaryEmotion } from '../avatar/emotions/emotion-types';
+
+export const MAX_EVENT_HISTORY = 50;
+export const MAX_RECENT_SPEECH_PHRASES = 10;
 
 /**
- * ShortTermMemory keeps an in-memory rolling history of recent activities,
+ * ShortTermMemory keeps an in-memory & file/JSON rolling history of recent activities,
  * tab visits, warning states, and speech responses to prevent repetitive behavior.
  */
-//[ADD] add a save short term memory to file and load short term memory to file
 export class ShortTermMemory {
   private events: ShortTermMemoryEvent[] = [];
   private activeWarnings: Map<string, ActiveWarningState> = new Map();
   private recentSpeechPhrases: string[] = [];
   private currentActiveDomain: string | null = null;
   private currentDomainStartTime: number = Date.now();
-  private maxEventHistory: number = 50;
+  private maxEventHistory: number = MAX_EVENT_HISTORY;
+  private maxRecentSpeechPhrases: number = MAX_RECENT_SPEECH_PHRASES;
   private storageKey: string = 'chleo_short_term_memory_v1';
 
-  constructor() {
+  // Easy-to-modify event template string for LLM feeding
+  private eventTemplate: string = '[{time}] [{type}] {domain} - {details}';
+
+  // Configurable list of memorable event types that trigger consolidation into LongTermMemory
+  private memorableEventTypes: string[] = [
+    'limit_exceeded',
+    'blocked_attempt',
+    'blocked_site_attempt',
+    'puzzle_unblock',
+    'puzzle_unblock_penalty',
+  ];
+
+  private longTermMemory: LongTermMemory;
+
+  constructor(longTermMemory: LongTermMemory) {
+    this.longTermMemory = longTermMemory;
     this.load();
   }
 
   /**
-   * Save short-term memory state to storage for restart persistence.
+   * Set custom template string for event formatting.
+   * Placeholders supported: {time}, {timestamp}, {type}, {domain}, {details}
+   */
+  setEventTemplate(template: string): void {
+    this.eventTemplate = template;
+  }
+
+  getEventTemplate(): string {
+    return this.eventTemplate;
+  }
+
+  /**
+   * Set configurable memorable event types triggering long term consolidation.
+   */
+  setMemorableEventTypes(types: string[]): void {
+    this.memorableEventTypes = types;
+  }
+
+  getMemorableEventTypes(): string[] {
+    return [...this.memorableEventTypes];
+  }
+
+  setMaxEventHistory(max: number): void {
+    this.maxEventHistory = max;
+  }
+
+  getMaxEventHistory(): number {
+    return this.maxEventHistory;
+  }
+
+  /**
+   * Save short-term memory state to storage / JSON payload.
    */
   save(): void {
     try {
@@ -29,11 +80,13 @@ export class ShortTermMemory {
           recentSpeechPhrases: this.recentSpeechPhrases,
           activeWarnings: Array.from(this.activeWarnings.entries()),
           currentActiveDomain: this.currentActiveDomain,
+          eventTemplate: this.eventTemplate,
+          memorableEventTypes: this.memorableEventTypes,
         };
         window.localStorage.setItem(this.storageKey, JSON.stringify(payload));
       }
     } catch (e) {
-      console.warn('[ShortTermMemory] Failed to save to localStorage:', e);
+      console.warn('[ShortTermMemory] Failed to save to storage:', e);
     }
   }
 
@@ -52,29 +105,88 @@ export class ShortTermMemory {
             this.activeWarnings = new Map(parsed.activeWarnings);
           }
           if (parsed.currentActiveDomain) this.currentActiveDomain = parsed.currentActiveDomain;
+          if (parsed.eventTemplate) this.eventTemplate = parsed.eventTemplate;
+          if (Array.isArray(parsed.memorableEventTypes)) this.memorableEventTypes = parsed.memorableEventTypes;
         }
       }
     } catch (e) {
-      console.warn('[ShortTermMemory] Failed to load from localStorage:', e);
+      console.warn('[ShortTermMemory] Failed to load from storage:', e);
     }
+  }
+
+  /**
+   * Format a ShortTermMemoryEvent into a human/LLM readable string.
+   */
+  formatEvent(event: ShortTermMemoryEvent, customTemplate?: string): string {
+    const template = customTemplate || this.eventTemplate;
+    const timeStr = new Date(event.timestamp).toLocaleTimeString();
+    return template
+      .replace(/\{time\}/g, timeStr)
+      .replace(/\{timestamp\}/g, event.timestamp.toString())
+      .replace(/\{type\}/g, event.type.toUpperCase())
+      .replace(/\{domain\}/g, event.domain || 'general')
+      .replace(/\{details\}/g, event.details);
   }
 
   /**
    * Record a short-term activity event.
    */
-  recordEvent(event: Omit<ShortTermMemoryEvent, 'id' | 'timestamp'>): ShortTermMemoryEvent {
-    const fullEvent: ShortTermMemoryEvent = {
+  recordEvent(
+    event: Omit<ShortTermMemoryEvent, 'id' | 'timestamp'>
+  ): ShortTermMemoryEvent {
+    const timestamp = Date.now();
+    const tempEvent: ShortTermMemoryEvent = {
       ...event,
-      id: `stm_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      timestamp: Date.now(),
+      id: `stm_${timestamp}_${Math.random().toString(36).substr(2, 5)}`,
+      timestamp,
     };
 
-    this.events.unshift(fullEvent);
+    tempEvent.formattedText = this.formatEvent(tempEvent);
+
+    this.events.unshift(tempEvent);
     if (this.events.length > this.maxEventHistory) {
       this.events.pop();
     }
+
     this.save();
-    return fullEvent;
+
+    // Auto-check if this is a memorable event and trigger consolidation
+    if (this.memorableEventTypes.includes(event.type.toLowerCase())) {
+      this.consolidateToLongTermMemory('memorable_event');
+    }
+
+    return tempEvent;
+  }
+
+  /**
+   * Consolidate short-term memory events into long-term memory.
+   */
+  consolidateToLongTermMemory(reason: MemoryConsolidationReason): void {
+    if (this.events.length === 0) return;
+
+    const summaries = this.events.map((e) => e.formattedText || this.formatEvent(e));
+    this.longTermMemory.ingestConsolidatedBatch(summaries);
+
+    console.log(`[ShortTermMemory] Consolidated ${summaries.length} events to LongTermMemory (Reason: ${reason})`);
+
+    // Reset/clear active event log after consolidation to prevent duplication
+    this.events = [];
+    this.save();
+  }
+
+  /**
+   * Export active short term memory as JSON string.
+   */
+  exportJSON(): string {
+    return JSON.stringify(
+      {
+        events: this.events,
+        recentSpeechPhrases: this.recentSpeechPhrases,
+        activeWarnings: Array.from(this.activeWarnings.entries()),
+      },
+      null,
+      2
+    );
   }
 
   /**
@@ -128,7 +240,7 @@ export class ShortTermMemory {
    */
   recordSpeech(phrase: string): void {
     this.recentSpeechPhrases.unshift(phrase);
-    if (this.recentSpeechPhrases.length > 10) {
+    if (this.recentSpeechPhrases.length > this.maxRecentSpeechPhrases) {
       this.recentSpeechPhrases.pop();
     }
     this.save();
@@ -150,4 +262,3 @@ export class ShortTermMemory {
   }
 }
 
-export const defaultShortTermMemory = new ShortTermMemory();

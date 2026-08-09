@@ -11,30 +11,10 @@ export interface SiteRule {
   requiresPuzzleToUnblock?: boolean;
 }
 
-export interface BehavioralRule {
-  id: string;
-  name: string;
-  conditions: {
-    event: string;
-    [key: string]: any;
-  };
-  emotionDeltas: Partial<Record<PrimaryEmotion, number>>;
-  rewards?: {
-    coins?: number;
-    itemDrop?: string;
-  };
-  heuristicTemplates: string[];
-  llmDirective: string;
-}
-
 export interface MonitoringConfig {
   rules: SiteRule[];
   productiveRewardIntervalSeconds: number;
   unblockPuzzlePenalty: Partial<Record<PrimaryEmotion, number>>;
-}
-
-export interface BehavioralConfig {
-  rules: BehavioralRule[];
 }
 
 export interface MonitoringEventPayload {
@@ -46,4 +26,18 @@ export interface MonitoringEventPayload {
   remainingSeconds: number;
   siteType: SiteType;
   message?: string;
+}
+
+/**
+ * Result returned by RuleStore.evaluateTick() to ActivityTracker.
+ */
+export interface TickResult {
+  domain: string;
+  spentTodaySeconds: number;
+  isBlocked: boolean;
+  ruleChanged: boolean;
+  reaction?: {
+    payload: MonitoringEventPayload;
+    speechText: string;
+  };
 }

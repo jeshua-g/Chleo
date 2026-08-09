@@ -1,41 +1,124 @@
-import { RuleStore } from './rule-store';
-import { ShortTermMemory } from '../memory/short-term-memory';
-import { LongTermMemory } from '../memory/long-term-memory';
 import { EmotionsOrchestrator } from '../avatar/emotions/emotions-orchestrator';
-import type { MonitoringEventPayload, BehavioralRule } from './monitoring-types';
+import { ResponseGenerator } from './response-generator';
+import type { ResponseResult } from './response-generator';
+import type { PrimaryEmotion } from '../avatar/emotions/emotion-types';
+import type { MonitoringEventPayload } from './monitoring-types';
+import defaultBehavioralRules from './config/behavioral-rules.json';
+
+// Behavioral types co-located with the engine that owns them
+export interface BehavioralRule {
+  id: string;
+  name: string;
+  conditions: {
+    event: string;
+    [key: string]: any;
+  };
+  emotionDeltas: Partial<Record<PrimaryEmotion, number>>;
+  rewards?: {
+    coins?: number;
+    itemDrop?: string;
+  };
+  heuristicTemplates: string[];
+  llmDirective: string;
+}
+
+export interface BehavioralConfig {
+  rules: BehavioralRule[];
+}
 
 export interface BehavioralReactionResult {
   rule: BehavioralRule;
   speechText: string;
+  responseType: ResponseResult['responseType'];
   emotionDeltas: BehavioralRule['emotionDeltas'];
   rewards?: BehavioralRule['rewards'];
 }
 
 /**
- * BehavioralEngine processes monitoring events, calculates emotion deltas,
- * generates speech responses from templates, and records memory entries.
+ * BehavioralEngine owns the behavioral rules config, matches events to rules,
+ * resolves emotion deltas, and delegates speech/memory to ResponseGenerator.
+ * Does NOT directly access ShortTermMemory or LongTermMemory.
  */
 export class BehavioralEngine {
-  private ruleStore: RuleStore;
-  private shortTermMemory: ShortTermMemory;
-  private longTermMemory: LongTermMemory;
+  private emotionOrchestrator: EmotionsOrchestrator;
+  private responseGenerator: ResponseGenerator;
+  private behavioralConfig: BehavioralConfig;
+  private storageKeyBehavioral = 'chleo_behavioral_rules_v1';
 
   constructor(
-    ruleStore: RuleStore,
-    shortTermMemory: ShortTermMemory,
-    longTermMemory: LongTermMemory
+    emotionOrchestrator: EmotionsOrchestrator,
+    responseGenerator: ResponseGenerator
   ) {
-    this.ruleStore = ruleStore;
-    this.shortTermMemory = shortTermMemory;
-    this.longTermMemory = longTermMemory;
+    this.emotionOrchestrator = emotionOrchestrator;
+    this.responseGenerator = responseGenerator;
+    this.behavioralConfig = this.loadBehavioralConfig();
   }
 
-  processEvent(
-    event: MonitoringEventPayload,
-    emotionOrchestrator: EmotionsOrchestrator
-  ): BehavioralReactionResult | null {
-    const rules = this.ruleStore.getBehavioralRules();
-    const matchingRule = rules.find(
+  private loadBehavioralConfig(): BehavioralConfig {
+    const defaults = JSON.parse(JSON.stringify(defaultBehavioralRules)) as BehavioralConfig;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem(this.storageKeyBehavioral);
+        if (raw) {
+          const parsed = JSON.parse(raw) as BehavioralConfig;
+          defaults.rules.forEach((defRule) => {
+            const storedRule = parsed.rules.find((r) => r.id === defRule.id);
+            if (storedRule) {
+              storedRule.emotionDeltas = defRule.emotionDeltas;
+              storedRule.conditions = defRule.conditions;
+            } else {
+              parsed.rules.push(defRule);
+            }
+          });
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('[BehavioralEngine] Failed to load behavioral rules from storage:', e);
+    }
+    return defaults;
+  }
+
+  saveBehavioralConfig(): void {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(this.storageKeyBehavioral, JSON.stringify(this.behavioralConfig));
+      }
+    } catch (e) {
+      console.warn('[BehavioralEngine] Failed to save behavioral rules:', e);
+    }
+  }
+
+  // --- Behavioral Rules Accessors ---
+
+  getBehavioralRules(): BehavioralRule[] {
+    return this.behavioralConfig.rules;
+  }
+
+  getBehavioralRule(id: string): BehavioralRule | undefined {
+    return this.behavioralConfig.rules.find((r) => r.id === id);
+  }
+
+  updateBehavioralRule(id: string, updates: Partial<BehavioralRule>): BehavioralRule | undefined {
+    const rule = this.getBehavioralRule(id);
+    if (rule) {
+      if (updates.emotionDeltas) rule.emotionDeltas = { ...rule.emotionDeltas, ...updates.emotionDeltas };
+      if (updates.rewards) rule.rewards = { ...rule.rewards, ...updates.rewards };
+      if (updates.heuristicTemplates) rule.heuristicTemplates = [...updates.heuristicTemplates];
+      if (updates.llmDirective) rule.llmDirective = updates.llmDirective;
+      this.saveBehavioralConfig();
+    }
+    return rule;
+  }
+
+  // --- Event Processing ---
+
+  /**
+   * Match an event to a behavioral rule, apply emotion deltas,
+   * and delegate speech generation + memory recording to ResponseGenerator.
+   */
+  processEvent(event: MonitoringEventPayload): BehavioralReactionResult | null {
+    const matchingRule = this.behavioralConfig.rules.find(
       (r) =>
         r.conditions.event === event.eventId ||
         r.id === event.eventId ||
@@ -48,59 +131,30 @@ export class BehavioralEngine {
     }
 
     // Apply emotion deltas to EmotionsOrchestrator
-    emotionOrchestrator.applyBehavioralData(matchingRule.emotionDeltas);
+    this.emotionOrchestrator.applyBehavioralData(matchingRule.emotionDeltas);
 
-    // Format template parameters
-    const speechText = this.interpolateTemplate(matchingRule.heuristicTemplates, event);
-
-    // Record in Short-Term and Long-Term Memory
-    this.shortTermMemory.recordEvent({
-      type: event.eventId.toLowerCase() as any,
-      domain: event.domain,
-      details: speechText,
-      emotionDelta: matchingRule.emotionDeltas,
-    });
-    this.shortTermMemory.recordSpeech(speechText);
-
-    if (event.eventId === 'LIMIT_EXCEEDED' || event.eventId === 'BLOCKED_SITE_ATTEMPT') {
-      this.longTermMemory.recordViolation(`Exceeded or visited restricted site: ${event.domain}`);
-    } else if (event.eventId === 'PRODUCTIVE_MILESTONE') {
-      this.longTermMemory.recordReward(`Productive focus session on ${event.domain}`);
-    } else if (event.eventId === 'PUZZLE_UNBLOCK_PENALTY') {
-      this.longTermMemory.recordPuzzleCompleted(event.domain);
-    }
-
-    // Update long term memory emotion snapshot
-    this.longTermMemory.updateLastEmotion(emotionOrchestrator.getState());
+    // Delegate speech generation + memory recording to ResponseGenerator
+    const response: ResponseResult = this.responseGenerator.generateResponseSync(event, matchingRule);
 
     return {
       rule: matchingRule,
-      speechText,
+      speechText: response.speechText,
+      responseType: response.responseType,
       emotionDeltas: matchingRule.emotionDeltas,
       rewards: matchingRule.rewards,
     };
   }
 
-  private interpolateTemplate(templates: string[], event: MonitoringEventPayload): string {
-    if (!templates || templates.length === 0) {
-      return event.message || `Activity event on ${event.domain}`;
-    }
+  getEmotionState() {
+    return this.emotionOrchestrator.getState();
+  }
 
-    // Pick template randomly to prevent repetitive phrasing
-    const idx = Math.floor(Math.random() * templates.length);
-    let template = templates[idx];
+  getOverallEmotion() {
+    return this.emotionOrchestrator.getOverallEmotion();
+  }
 
-    const timeSpentFormatted =
-      event.timeSpentSeconds >= 60
-        ? `${Math.floor(event.timeSpentSeconds / 60)}m`
-        : `${event.timeSpentSeconds}s`;
-
-    return template
-      .replace(/\{domain\}/g, event.domain || 'this site')
-      .replace(/\{percent\}/g, Math.round(event.percentSpent).toString())
-      .replace(/\{remainingSeconds\}/g, Math.round(event.remainingSeconds).toString())
-      .replace(/\{limit\}/g, Math.round(event.limitSeconds / 60).toString())
-      .replace(/\{timeSpent\}/g, timeSpentFormatted)
-      .replace(/\{coins\}/g, '50');
+  resetBehavioralRules(): void {
+    this.behavioralConfig = JSON.parse(JSON.stringify(defaultBehavioralRules));
+    this.saveBehavioralConfig();
   }
 }

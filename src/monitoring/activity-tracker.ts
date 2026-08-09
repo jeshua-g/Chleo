@@ -1,10 +1,7 @@
 import { RuleStore } from './rule-store';
-import { BehavioralEngine } from './behavioral-engine';
 import { ShortTermMemory } from '../memory/short-term-memory';
-import { LongTermMemory } from '../memory/long-term-memory';
-import { EmotionsOrchestrator } from '../avatar/emotions/emotions-orchestrator';
 import { parseMonitoringCommand, ParsedCommand } from './command-parser';
-import type { MonitoringEventPayload, SiteRule } from './monitoring-types';
+import type { MonitoringEventPayload, SiteRule, TickResult } from './monitoring-types';
 
 export interface ActivityTrackerListeners {
   onEventTriggered?: (payload: MonitoringEventPayload, speechText: string) => void;
@@ -13,34 +10,26 @@ export interface ActivityTrackerListeners {
 }
 
 /**
- * ActivityTracker manages real-time site visitation, 1-second timer ticker,
- * rule enforcement, warning threshold checks, productive milestones, and puzzle unblocking.
+ * ActivityTracker manages the 1-second tick loop, domain tracking,
+ * and date-change detection. Talks only to RuleStore.
  */
 export class ActivityTracker {
   private ruleStore: RuleStore;
-  private behavioralEngine: BehavioralEngine;
   private shortTermMemory: ShortTermMemory;
-  private longTermMemory: LongTermMemory;
-  private emotionOrchestrator: EmotionsOrchestrator;
   private listeners: ActivityTrackerListeners;
 
   private tickerInterval: number | null = null;
   private activeDomain: string = 'localhost';
-  private cumulativeProductiveSeconds: number = 0;
+  private lastCheckedDate: string = new Date().toDateString();
 
   constructor(
     ruleStore: RuleStore,
     shortTermMemory: ShortTermMemory,
-    longTermMemory: LongTermMemory,
-    emotionOrchestrator: EmotionsOrchestrator,
     listeners: ActivityTrackerListeners = {}
   ) {
     this.ruleStore = ruleStore;
     this.shortTermMemory = shortTermMemory;
-    this.longTermMemory = longTermMemory;
-    this.emotionOrchestrator = emotionOrchestrator;
     this.listeners = listeners;
-    this.behavioralEngine = new BehavioralEngine(ruleStore, shortTermMemory, longTermMemory);
 
     this.startTicker();
   }
@@ -65,105 +54,36 @@ export class ActivityTracker {
 
   /**
    * Main 1-second tick loop evaluation.
+   * Only interacts with RuleStore — all behavioral/memory logic is handled downstream.
    */
   private onTick(): void {
     if (!this.activeDomain) return;
 
-    let rule = this.ruleStore.findRuleForDomain(this.activeDomain);
-    const domain = this.activeDomain;
-
-    // If website is BLOCKED, do not increment time spent
-    if (rule && rule.type === 'blocked') {
-      if (this.listeners.onTick) {
-        this.listeners.onTick(domain, rule.spentTodaySeconds);
-      }
-      return;
+    // Check end-of-day date change for memory consolidation
+    const currentDate = new Date().toDateString();
+    if (currentDate !== this.lastCheckedDate) {
+      this.lastCheckedDate = currentDate;
+      this.shortTermMemory.consolidateToLongTermMemory('day_change');
     }
 
-    // Increment spent time for active non-blocked domain
-    this.ruleStore.updateSpentTime(domain, 1);
-    rule = this.ruleStore.findRuleForDomain(domain);
+    // Delegate all rule evaluation + behavioral reactions to RuleStore
+    const result: TickResult = this.ruleStore.evaluateTick(
+      this.activeDomain,
+      1,
+      (d) => this.shortTermMemory.isWarningActive(d),
+      (d, p) => this.shortTermMemory.setWarning(d, p)
+    );
 
     if (this.listeners.onTick) {
-      this.listeners.onTick(domain, rule ? rule.spentTodaySeconds : 0);
+      this.listeners.onTick(result.domain, result.spentTodaySeconds);
     }
 
-    if (!rule) return;
-
-    // If website is AVOID
-    if (rule.type === 'avoid' && rule.dailyLimitSeconds > 0) {
-      const spent = rule.spentTodaySeconds;
-      const limit = rule.dailyLimitSeconds;
-      const percent = (spent / limit) * 100;
-      const remaining = Math.max(0, limit - spent);
-
-      // Check Exceeded
-      if (spent >= limit) {
-        // Automatically convert to blocked state!
-        rule.type = 'blocked';
-        rule.requiresPuzzleToUnblock = true;
-        this.ruleStore.saveActivityConfig();
-
-        const payload: MonitoringEventPayload = {
-          eventId: 'LIMIT_EXCEEDED',
-          domain,
-          timeSpentSeconds: spent,
-          limitSeconds: limit,
-          percentSpent: 100,
-          remainingSeconds: 0,
-          siteType: 'blocked',
-        };
-
-        const result = this.behavioralEngine.processEvent(payload, this.emotionOrchestrator);
-        if (result && this.listeners.onEventTriggered) {
-          this.listeners.onEventTriggered(payload, result.speechText);
-        }
-        if (this.listeners.onRuleChanged) this.listeners.onRuleChanged();
-        return;
-      }
-
-      // Check Warning Threshold
-      if (percent >= rule.warningThresholdPercent && !this.shortTermMemory.isWarningActive(domain)) {
-        this.shortTermMemory.setWarning(domain, percent);
-
-        const payload: MonitoringEventPayload = {
-          eventId: 'LIMIT_WARNING',
-          domain,
-          timeSpentSeconds: spent,
-          limitSeconds: limit,
-          percentSpent: remaining,
-          remainingSeconds: remaining,
-          siteType: 'avoid',
-        };
-
-        const result = this.behavioralEngine.processEvent(payload, this.emotionOrchestrator);
-        if (result && this.listeners.onEventTriggered) {
-          this.listeners.onEventTriggered(payload, result.speechText);
-        }
-      }
+    if (result.reaction && this.listeners.onEventTriggered) {
+      this.listeners.onEventTriggered(result.reaction.payload, result.reaction.speechText);
     }
 
-    // If website is PRODUCTIVE
-    if (rule.type === 'productive') {
-      this.cumulativeProductiveSeconds += 1;
-
-      const rewardInterval = this.ruleStore.getProductiveRewardIntervalSeconds();
-      if (this.cumulativeProductiveSeconds > 0 && this.cumulativeProductiveSeconds % rewardInterval === 0) {
-        const payload: MonitoringEventPayload = {
-          eventId: 'PRODUCTIVE_MILESTONE',
-          domain,
-          timeSpentSeconds: this.cumulativeProductiveSeconds,
-          limitSeconds: rewardInterval,
-          percentSpent: 100,
-          remainingSeconds: 0,
-          siteType: 'productive',
-        };
-
-        const result = this.behavioralEngine.processEvent(payload, this.emotionOrchestrator);
-        if (result && this.listeners.onEventTriggered) {
-          this.listeners.onEventTriggered(payload, result.speechText);
-        }
-      }
+    if (result.ruleChanged && this.listeners.onRuleChanged) {
+      this.listeners.onRuleChanged();
     }
   }
 
@@ -181,55 +101,32 @@ export class ActivityTracker {
     this.activeDomain = domain;
     this.shortTermMemory.setActiveDomain(domain);
 
-    const rule = this.ruleStore.findRuleForDomain(domain);
+    const result = this.ruleStore.evaluateVisit(domain);
 
-    if (rule && rule.type === 'blocked') {
-      const payload: MonitoringEventPayload = {
-        eventId: 'SITE_BLOCKED_VISIT',
-        domain,
-        timeSpentSeconds: rule.spentTodaySeconds,
-        limitSeconds: rule.dailyLimitSeconds,
-        percentSpent: 100,
-        remainingSeconds: 0,
-        siteType: 'blocked',
-      };
-
-      const result = this.behavioralEngine.processEvent(payload, this.emotionOrchestrator);
-      if (result && this.listeners.onEventTriggered) {
-        this.listeners.onEventTriggered(payload, result.speechText);
+    if (result.isBlocked) {
+      if (result.reaction && this.listeners.onEventTriggered) {
+        this.listeners.onEventTriggered(result.reaction.payload, result.reaction.speechText);
       }
-
-      return { isBlocked: true, speechText: result?.speechText };
+      return { isBlocked: true, speechText: result.reaction?.speechText };
     }
 
     return { isBlocked: false };
   }
 
   /**
-   * Execute unblock puzzle finish action (Goal 2 & Goal 6).
+   * Execute unblock puzzle finish action.
    * Unblocks website but applies anger and sadness penalty to Chleo!
    */
   completePuzzleAndUnblock(domain: string): { rule: SiteRule; speechText: string } {
-    const rule = this.ruleStore.setUnblockSite(domain);
+    const result = this.ruleStore.evaluatePuzzleUnblock(domain);
+    const rule = this.ruleStore.findRuleForDomain(domain)!;
 
-    const payload: MonitoringEventPayload = {
-      eventId: 'PUZZLE_UNBLOCK_PENALTY',
-      domain,
-      timeSpentSeconds: rule.spentTodaySeconds,
-      limitSeconds: rule.dailyLimitSeconds,
-      percentSpent: 0,
-      remainingSeconds: 0,
-      siteType: 'neutral',
-    };
-
-    const result = this.behavioralEngine.processEvent(payload, this.emotionOrchestrator);
-
-    if (result && this.listeners.onEventTriggered) {
-      this.listeners.onEventTriggered(payload, result.speechText);
+    if (result.reaction && this.listeners.onEventTriggered) {
+      this.listeners.onEventTriggered(result.reaction.payload, result.reaction.speechText);
     }
     if (this.listeners.onRuleChanged) this.listeners.onRuleChanged();
 
-    return { rule, speechText: result?.speechText || `Unblocked ${domain}` };
+    return { rule, speechText: result.reaction?.speechText || `Unblocked ${domain}` };
   }
 
   /**
@@ -292,10 +189,10 @@ export class ActivityTracker {
   }
 
   getEmotionState() {
-    return this.emotionOrchestrator.getState();
+    return this.ruleStore.getBehavioralEngine().getEmotionState();
   }
 
   getOverallEmotion() {
-    return this.emotionOrchestrator.getOverallEmotion();
+    return this.ruleStore.getBehavioralEngine().getOverallEmotion();
   }
 }
