@@ -116,6 +116,55 @@ export class RoboticTTSModulator {
   }
 
   /**
+   * Ensures Web Audio and SpeechSynthesis voices are loaded and ready.
+   * Performs asynchronous test check for browser TTS voices.
+   *
+   * @param timeoutMs Maximum milliseconds to wait for voices to load.
+   * @returns Promise resolving to boolean indicating readiness.
+   */
+  async ensureVoicesLoaded(timeoutMs: number = 2500): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+
+    this.preWarm();
+
+    if (!this.speechSynth) {
+      return false;
+    }
+
+    // Voices are already available in browser cache
+    if (this.speechSynth.getVoices().length > 0) {
+      this.loadFemaleVoice();
+      return true;
+    }
+
+    // Wait for voiceschanged event or timeout fallback
+    return new Promise<boolean>((resolve) => {
+      let resolved = false;
+      const finish = (success: boolean) => {
+        if (!resolved) {
+          resolved = true;
+          this.loadFemaleVoice();
+          resolve(success);
+        }
+      };
+
+      if (this.speechSynth) {
+        const handleVoicesChanged = () => {
+          if (this.speechSynth) {
+            this.speechSynth.removeEventListener('voiceschanged', handleVoicesChanged);
+          }
+          finish(true);
+        };
+        this.speechSynth.addEventListener('voiceschanged', handleVoicesChanged);
+      }
+
+      setTimeout(() => {
+        finish(this.speechSynth ? this.speechSynth.getVoices().length > 0 : false);
+      }, timeoutMs);
+    });
+  }
+
+  /**
    * Selects Microsoft Zira exclusively as default voice (with fallback to English female voice).
    */
   private loadFemaleVoice(): void {

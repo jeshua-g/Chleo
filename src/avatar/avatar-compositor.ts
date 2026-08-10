@@ -132,6 +132,13 @@ export class AvatarCompositor {
   }
 
   /**
+   * Returns true if sprite sheet assets are preloaded and initialized.
+   */
+  isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  /**
    * Start the animation tick interval loop.
    */
   start(): void {

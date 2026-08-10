@@ -5,6 +5,8 @@ import { ProjectOverview } from '../components/ProjectOverview';
 import {
   AvatarCompositor,
   defaultAvatarConfig,
+  defaultTTSModulator,
+  defaultSpeechOrchestrator,
 } from '../../src/avatar';
 import type { CleoExpression } from '../../src/avatar';
 
@@ -124,6 +126,8 @@ const IDLE_MESSAGES: IdleMessage[] = [
 const IDLE_DISPLAY_DURATION = 5000;
 const IDLE_INTERVAL = 10000; // Interval between individual idle messages
 const IDLE_CYCLE_RESET_INTERVAL = 60000; // 1 minute delay after finishing all idle messages in the list
+const MIC_TEST_MESSAGE = "mic test";
+const MIC_TEST_DURATION = 2000;
 const GREETING_MESSAGE = "Hi there! I am Chleo!";
 const GREETING_DURATION = 4000;
 
@@ -143,7 +147,7 @@ export const HomePage: React.FC = () => {
   const avatarBoxRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const panelRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
-  const [bubbleText, setBubbleText] = useState(GREETING_MESSAGE);
+  const [bubbleText, setBubbleText] = useState('');
   const [isBubbleVisible, setIsBubbleVisible] = useState(false);
   const [hoveredPanel, setHoveredPanel] = useState<string | null>(null);
   const [lines, setLines] = useState<LineCoord[]>([]);
@@ -153,32 +157,6 @@ export const HomePage: React.FC = () => {
   const idleIndexRef = useRef(0);
   const isHoveringRef = useRef(false);
   const panelMessageIndicesRef = useRef<Record<string, number>>({});
-
-  // Initialize avatar compositor
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const compositor = new AvatarCompositor(canvas, {
-      ...defaultAvatarConfig,
-      scale: 6,
-    });
-    compositorRef.current = compositor;
-
-    let isSubscribed = true;
-
-    compositor.init().then(() => {
-      if (!isSubscribed) return;
-      compositor.start();
-      compositor.setExpression('happy');
-      compositor.setExpression('speak', GREETING_MESSAGE);
-    });
-
-    return () => {
-      isSubscribed = false;
-      compositor.stop();
-    };
-  }, []);
 
   // Random natural blinking effect
   useEffect(() => {
@@ -288,25 +266,87 @@ export const HomePage: React.FC = () => {
     }, IDLE_DISPLAY_DURATION);
   }, []);
 
+  // Initialize avatar compositor and run load readiness tests before greeting
   useEffect(() => {
-    setIsBubbleVisible(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const greetingTimer = setTimeout(() => {
-      setIsBubbleVisible(false);
-      if (compositorRef.current) {
-        compositorRef.current.setExpression('idle');
+    const compositor = new AvatarCompositor(canvas, {
+      ...defaultAvatarConfig,
+      scale: 6,
+    });
+    compositorRef.current = compositor;
+
+    let isSubscribed = true;
+
+    const runReadinessCheckAndGreeting = async () => {
+      console.log('[HomePage] Starting Chleo load readiness tests...');
+
+      // Load Avatar sprite sheet assets
+      console.log('[HomePage Test 1/3] Preloading Avatar sprite assets...');
+      await compositor.init();
+      if (!isSubscribed) return;
+      console.log('[HomePage Test 1/3 Passed] Avatar assets preloaded.');
+
+      compositor.start();
+      compositor.setExpression('idle');
+
+      // Check TTS engine & Web Speech API voices readiness
+      console.log('[HomePage Test 2/3] Checking TTS engine & voices...');
+      const ttsReady = await defaultTTSModulator.ensureVoicesLoaded();
+      if (!isSubscribed) return;
+      console.log(`[HomePage Test 2/3 Passed] TTS engine ready: ${ttsReady}`);
+
+      // Mic test speech verification ("mic test")
+      console.log('[HomePage Test 3/3] Performing mic test speech verification...');
+      if (!isHoveringRef.current) {
+        setBubbleText(MIC_TEST_MESSAGE);
+        setIsBubbleVisible(true);
+        compositor.setExpression('speak', MIC_TEST_MESSAGE);
       }
-      const startTimer = setTimeout(() => {
-        startIdleCycle();
-      }, IDLE_INTERVAL);
-      idleTimerRef.current = startTimer;
-    }, GREETING_DURATION);
+
+      const tickMs = (defaultAvatarConfig.cycleDurationMs ?? 1000) / defaultAvatarConfig.masterFrameCount;
+      const micTestPacket = await defaultSpeechOrchestrator.preRenderSpeech(MIC_TEST_MESSAGE, tickMs);
+      const micTestDuration = Math.max(MIC_TEST_DURATION, micTestPacket.totalDurationMs + 400);
+
+      await new Promise(resolve => setTimeout(resolve, micTestDuration));
+      if (!isSubscribed) return;
+
+      // All tests passed! Perform greeting ("Hi there! I am Chleo!")
+      console.log('[HomePage] All readiness tests passed! Performing greeting speech...');
+      if (!isHoveringRef.current) {
+        setBubbleText(GREETING_MESSAGE);
+        setIsBubbleVisible(true);
+        compositor.setExpression('happy');
+        compositor.setExpression('speak', GREETING_MESSAGE);
+      }
+
+      const greetingPacket = await defaultSpeechOrchestrator.preRenderSpeech(GREETING_MESSAGE, tickMs);
+      const greetingDuration = Math.max(GREETING_DURATION, greetingPacket.totalDurationMs + 500);
+
+      idleTimerRef.current = setTimeout(() => {
+        if (!isSubscribed) return;
+        if (!isHoveringRef.current) {
+          setIsBubbleVisible(false);
+          compositor.setExpression('idle');
+        }
+
+        idleTimerRef.current = setTimeout(() => {
+          if (!isSubscribed || isHoveringRef.current) return;
+          startIdleCycle();
+        }, IDLE_INTERVAL);
+      }, greetingDuration);
+    };
+
+    runReadinessCheckAndGreeting();
 
     return () => {
-      clearTimeout(greetingTimer);
+      isSubscribed = false;
+      compositor.stop();
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
     };
   }, [startIdleCycle]);
+
 
   // Hover handlers
   const handlePanelEnter = (panel: FocusPanelConfig) => {
