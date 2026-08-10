@@ -31,23 +31,23 @@ interface EmotionMeta {
 }
 
 const EMOTION_METADATA: EmotionMeta[] = [
-  { key: 'joy', label: 'Joy', color: '#fde047', darkColor: '#ca8a04', icon: '😊', angle: 0 },
-  { key: 'trust', label: 'Trust', color: '#4ade80', darkColor: '#16a34a', icon: '🤝', angle: 45 },
-  { key: 'fear', label: 'Fear', color: '#14b8a6', darkColor: '#0d9488', icon: '😨', angle: 90 },
-  { key: 'surprise', label: 'Surprise', color: '#38bdf8', darkColor: '#0284c7', icon: '😮', angle: 135 },
-  { key: 'sadness', label: 'Sadness', color: '#60a5fa', darkColor: '#2563eb', icon: '😢', angle: 180 },
-  { key: 'disgust', label: 'Disgust', color: '#c084fc', darkColor: '#9333ea', icon: '🤢', angle: 225 },
-  { key: 'anger', label: 'Anger', color: '#f87171', darkColor: '#dc2626', icon: '😡', angle: 270 },
-  { key: 'anticipation', label: 'Anticipation', color: '#fb923c', darkColor: '#ea580c', icon: '🤩', angle: 315 },
+  { key: 'joy', label: 'Joy', color: '#fde047', darkColor: '#ca8a04', icon: '', angle: 0 },
+  { key: 'trust', label: 'Trust', color: '#4ade80', darkColor: '#16a34a', icon: '', angle: 45 },
+  { key: 'fear', label: 'Fear', color: '#14b8a6', darkColor: '#0d9488', icon: '', angle: 90 },
+  { key: 'surprise', label: 'Surprise', color: '#38bdf8', darkColor: '#0284c7', icon: '', angle: 135 },
+  { key: 'sadness', label: 'Sadness', color: '#60a5fa', darkColor: '#2563eb', icon: '', angle: 180 },
+  { key: 'disgust', label: 'Disgust', color: '#c084fc', darkColor: '#9333ea', icon: '', angle: 225 },
+  { key: 'anger', label: 'Anger', color: '#f87171', darkColor: '#dc2626', icon: '', angle: 270 },
+  { key: 'anticipation', label: 'Anticipation', color: '#fb923c', darkColor: '#ea580c', icon: '', angle: 315 },
 ];
 
 const PRESETS: Array<{ label: string; state: Partial<Record<PrimaryEmotion, number>> }> = [
-  { label: '💖 Love', state: { joy: 0.9, trust: 0.8 } },
-  { label: '🌟 Optimism', state: { joy: 0.85, anticipation: 0.75 } },
-  { label: '🔥 Aggression', state: { anger: 0.9, anticipation: 0.7 } },
-  { label: '😲 Awe', state: { fear: 0.8, surprise: 0.85 } },
-  { label: '🎭 Bittersweet', state: { joy: 0.7, sadness: 0.7 } },
-  { label: '🧹 Reset (0%)', state: { joy: 0, trust: 0, fear: 0, surprise: 0, sadness: 0, disgust: 0, anger: 0, anticipation: 0 } },
+  { label: 'Love', state: { joy: 0.9, trust: 0.8 } },
+  { label: 'Optimism', state: { joy: 0.85, anticipation: 0.75 } },
+  { label: 'Aggression', state: { anger: 0.9, anticipation: 0.7 } },
+  { label: 'Awe', state: { fear: 0.8, surprise: 0.85 } },
+  { label: 'Bittersweet', state: { joy: 0.7, sadness: 0.7 } },
+  { label: 'Reset (0%)', state: { joy: 0, trust: 0, fear: 0, surprise: 0, sadness: 0, disgust: 0, anger: 0, anticipation: 0 } },
 ];
 
 const RESPONSE_TYPE_OPTIONS = [
@@ -233,7 +233,6 @@ export const EmotionsWheelVisualizer: React.FC<EmotionsWheelVisualizerProps> = (
     <PanelSection
       id="section-emotions-wheel"
       title="Emotions Wheel Visualizer"
-      icon="☸️"
       bgVariant="actions"
     >
       {/* Visual Plutchik Wheel Display */}
@@ -283,7 +282,7 @@ export const EmotionsWheelVisualizer: React.FC<EmotionsWheelVisualizerProps> = (
       {/* Volume Tuner Console */}
       <div className="volume-tuners-section">
         <div className="tuners-header">
-          <span className="tuners-title">🎛️ Emotion Intensity Tuners (0% - 100%)</span>
+          <span className="tuners-title">Emotion Intensity Tuners (0% - 100%)</span>
         </div>
 
         <div className="tuners-grid">
@@ -300,7 +299,7 @@ export const EmotionsWheelVisualizer: React.FC<EmotionsWheelVisualizerProps> = (
               <div key={meta.key} className="tuner-card" style={{ '--tuner-color': meta.color } as React.CSSProperties}>
                 <div className="tuner-card-header">
                   <div className="tuner-info">
-                    <span className="tuner-icon">{meta.icon}</span>
+                    {meta.icon && <span className="tuner-icon">{meta.icon}</span>}
                     <span className="tuner-name">{meta.label}</span>
                   </div>
                   <span className="tuner-value-badge">{pct}%</span>

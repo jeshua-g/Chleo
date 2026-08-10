@@ -308,21 +308,23 @@ export class AvatarCompositor {
             defaultSpeechOrchestrator.playPreRenderedSpeech(packet, this);
           });
         } else {
-          // Fallback: play static speak animation if no text provided.
           this.playAnimation('mouth', 'speak', 'once');
         }
         break;
       }
-      case 'sleep':
-        this.playAnimation('eyes', 'sleep', 'infinite');
-        this.playAnimation('mouth', 'idle', 'infinite');
-        this.playAnimation('eyebrows', 'idle', 'infinite');
-        break;
       case 'close_eyes':
         this.playAnimation('eyes', 'close_eyes', 'infinite');
         break;
       case 'angry':
         this.playAnimation('eyebrows', 'angry', 'infinite');
+        break;
+      case 'focused':
+        this.playAnimation('eyebrows', 'focused', 'infinite');
+        this.playAnimation('eyes', 'focused', 'infinite');
+        break;
+      case 'happy':
+        this.playAnimation('eyebrows', 'happy', 'infinite');
+        this.playAnimation('eyes', 'happy', 'infinite');
         break;
       case 'yawn':
         this.playAnimation('mouth', 'yawn', 'once');
@@ -330,6 +332,7 @@ export class AvatarCompositor {
         break;
       case 'question':
         this.playAnimation('eyebrows', 'question', 'once');
+        this.playAnimation('eyes', 'question', 'once');
         break;
     }
   }

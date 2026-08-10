@@ -233,7 +233,7 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
         </div>
 
         <div id="drag-hint" className="drag-hint">
-          <span className="pixel-icon">🖐️</span> Drag CHLEO anywhere on stage
+          Drag CHLEO anywhere on stage
         </div>
       </div>
 

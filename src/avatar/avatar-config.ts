@@ -6,9 +6,13 @@ import SPRITE_EYES_BLINK from '../assets/sprites/eyes/eyes_blink.png';
 import SPRITE_MOUTH_IDLE from '../assets/sprites/mouth/mouth_idle.png';
 import SPRITE_MOUTH_SPEAK from '../assets/sprites/mouth/mouth_speak.png';
 import SPRITE_BROWS_IDLE from '../assets/sprites/brows/brows_idle.png';
+import SPRITE_BROWS_QUESTION from '../assets/frames/brows/brows_ru.png';
+import FRAME_BROWS_DOWN from '../assets/frames/brows/brows_tg.png'
+import FRAME_BROWS_UP from '../assets/frames/brows/brows_bu.png'
+import FRAME_EYES_OPENED from '../assets/frames/eyes/eyes_wide.png'
+import FRAME_EYES_HALFCLOSED from '../assets/frames/eyes/eyes_bhc.png'
+import FRAME_EYES_RIGHT_HALFCLOSED from '../assets/frames/eyes/eyes_rhc.png'
 
-// [TO DO] 
-const SPRITE_BROWS_QUESTION = '';
 
 export const defaultAvatarConfig: AvatarConfig = {
   canvasWidth: 64,
@@ -76,6 +80,18 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameHeight: 64,
           loop: 'infinite',
         },
+        focused: {
+          type: "framearray",
+          srcArray: [FRAME_EYES_HALFCLOSED]
+        },
+        question: {
+          type: "framearray",
+          srcArray: [FRAME_EYES_RIGHT_HALFCLOSED]
+        },
+        happy: {
+          type: "framearray",
+          srcArray: [FRAME_EYES_OPENED]
+        },
       },
       defaultAnimation: 'idle',
     },
@@ -123,7 +139,7 @@ export const defaultAvatarConfig: AvatarConfig = {
         },
         angry: {
           type: "spritesheet",
-          src: SPRITE_BROWS_IDLE,
+          src: FRAME_BROWS_DOWN,
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
@@ -132,14 +148,25 @@ export const defaultAvatarConfig: AvatarConfig = {
           ],
           loop: 'infinite',
         },
+        focused: {
+          type: "framearray",
+          srcArray: [FRAME_BROWS_DOWN],
+          frameOffsets: [
+            { x: 0, y: 1 },
+          ],
+        },
+        happy: {
+          type: "framearray",
+          srcArray: [FRAME_BROWS_UP]
+        },
         question: {
           type: "spritesheet",
-          src: SPRITE_BROWS_IDLE,
+          src: SPRITE_BROWS_QUESTION,
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
           frameOffsets: [
-            { x: 0, y: -1 },
+            { x: 0, y: 0 },
           ],
           loop: 'once',
         },

@@ -45,12 +45,12 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   const handleConsolidateToLTM = () => {
     stm.consolidateToLongTermMemory('manual_trigger');
     refreshLogs();
-    showStatus('⚡ Short-Term memory consolidated to Long-Term memory!');
+    showStatus('Short-Term memory consolidated to Long-Term memory!');
   };
 
   const handleDownloadSTM = () => {
     stm.downloadJSON();
-    showStatus('💾 Downloaded short_term_memory.json');
+    showStatus('Downloaded short_term_memory.json');
   };
 
   const handleUploadSTM = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,9 +62,9 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
       const text = evt.target?.result as string;
       if (text && stm.importJSON(text)) {
         refreshLogs();
-        showStatus('📂 Short-Term memory successfully restored from JSON!');
+        showStatus('Short-Term memory successfully restored from JSON!');
       } else {
-        showStatus('❌ Failed to parse Short-Term memory JSON.');
+        showStatus('Failed to parse Short-Term memory JSON.');
       }
     };
     reader.readAsText(file);
@@ -74,14 +74,14 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   const handleClearSTM = () => {
     stm.clear();
     refreshLogs();
-    showStatus('🗑️ Short-Term memory cleared.');
+    showStatus('Short-Term memory cleared.');
   };
 
   // --- Long Term Memory Actions ---
 
   const handleDownloadLTM = () => {
     ltm.downloadJSON();
-    showStatus('💾 Downloaded long_term_memory.json');
+    showStatus('Downloaded long_term_memory.json');
   };
 
   const handleUploadLTM = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,9 +93,9 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
       const text = evt.target?.result as string;
       if (text && ltm.importJSON(text)) {
         refreshLogs();
-        showStatus('📂 Long-Term memory successfully restored from JSON!');
+        showStatus('Long-Term memory successfully restored from JSON!');
       } else {
-        showStatus('❌ Failed to parse Long-Term memory JSON.');
+        showStatus('Failed to parse Long-Term memory JSON.');
       }
     };
     reader.readAsText(file);
@@ -105,7 +105,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   const handleResetLTM = () => {
     ltm.reset();
     refreshLogs();
-    showStatus('🗑️ Long-Term memory reset to defaults.');
+    showStatus('Long-Term memory reset to defaults.');
   };
 
   return (
@@ -129,7 +129,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
       )}
 
       {/* Short Term Memory Panel */}
-      <PanelSection title="Short-Term Memory" icon="⏱️" bgVariant="activity">
+      <PanelSection title="Short-Term Memory" bgVariant="activity">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Action Toolbar */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -139,7 +139,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
               style={{ fontSize: '0.78rem', padding: '5px 8px', flex: 1 }}
               title="Consolidate all short term events into long term memory and refresh"
             >
-              ⚡ Log to Long-Term Memory
+              Log to Long-Term Memory
             </Button>
             <Button
               variant="secondary"
@@ -147,7 +147,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
               style={{ fontSize: '0.78rem', padding: '5px 8px' }}
               title="Download short_term_memory.json"
             >
-              💾 Export
+              Export
             </Button>
             <Button
               variant="secondary"
@@ -155,7 +155,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
               style={{ fontSize: '0.78rem', padding: '5px 8px' }}
               title="Upload short_term_memory.json to restore"
             >
-              📂 Import
+              Import
             </Button>
             <input
               type="file"
@@ -169,7 +169,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
               onClick={handleClearSTM}
               style={{ fontSize: '0.78rem', padding: '5px 8px' }}
             >
-              🗑️ Reset
+              Reset
             </Button>
           </div>
 
@@ -223,7 +223,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
       </PanelSection>
 
       {/* Long Term Memory Panel */}
-      <PanelSection title="Long-Term Memory" icon="🧠" bgVariant="marketplace">
+      <PanelSection title="Long-Term Memory" bgVariant="marketplace">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {/* Action Toolbar */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -232,14 +232,14 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
               onClick={handleDownloadLTM}
               style={{ fontSize: '0.78rem', padding: '5px 8px', flex: 1 }}
             >
-              💾 Export LTM JSON
+              Export LTM JSON
             </Button>
             <Button
               variant="secondary"
               onClick={() => ltmFileInputRef.current?.click()}
               style={{ fontSize: '0.78rem', padding: '5px 8px', flex: 1 }}
             >
-              📂 Import LTM JSON
+              Import LTM JSON
             </Button>
             <input
               type="file"
@@ -253,7 +253,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
               onClick={handleResetLTM}
               style={{ fontSize: '0.78rem', padding: '5px 8px' }}
             >
-              🗑️ Reset
+              Reset
             </Button>
           </div>
 
@@ -267,16 +267,16 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
             }}
           >
             <div style={{ backgroundColor: 'var(--bg-card-secondary, #f4ece0)', border: '1px solid var(--border-pixel, #2d2424)', padding: '6px 8px', borderRadius: '6px', color: 'var(--text-dark, #2d2424)' }}>
-              📅 Days Known: <strong>{ltmData.daysKnown}</strong>
+              Days Known: <strong>{ltmData.daysKnown}</strong>
             </div>
             <div style={{ backgroundColor: 'var(--bg-card-secondary, #f4ece0)', border: '1px solid var(--border-pixel, #2d2424)', padding: '6px 8px', borderRadius: '6px', color: 'var(--text-dark, #2d2424)' }}>
-              ⚠️ Violations: <strong style={{ color: '#d32f2f' }}>{ltmData.totalViolationsCount}</strong>
+              Violations: <strong style={{ color: '#d32f2f' }}>{ltmData.totalViolationsCount}</strong>
             </div>
             <div style={{ backgroundColor: 'var(--bg-card-secondary, #f4ece0)', border: '1px solid var(--border-pixel, #2d2424)', padding: '6px 8px', borderRadius: '6px', color: 'var(--text-dark, #2d2424)' }}>
-              🏆 Rewards: <strong style={{ color: '#2e7d32' }}>{ltmData.totalRewardsEarned}</strong>
+              Rewards: <strong style={{ color: '#2e7d32' }}>{ltmData.totalRewardsEarned}</strong>
             </div>
             <div style={{ backgroundColor: 'var(--bg-card-secondary, #f4ece0)', border: '1px solid var(--border-pixel, #2d2424)', padding: '6px 8px', borderRadius: '6px', color: 'var(--text-dark, #2d2424)' }}>
-              🧩 Puzzles: <strong>{ltmData.totalPuzzlesCompleted}</strong>
+              Puzzles: <strong>{ltmData.totalPuzzlesCompleted}</strong>
             </div>
           </div>
 

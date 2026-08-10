@@ -152,7 +152,6 @@ export const PlaygroundPage: React.FC = () => {
         >
           <div className="drawer-header">
             <div className="drawer-title-group">
-              <span className="drawer-icon">🎮</span>
               <h3 className="drawer-title">Controls &amp; Actions</h3>
             </div>
             <button
@@ -201,21 +200,21 @@ export const PlaygroundPage: React.FC = () => {
               onClick={() => setActiveTabPanel('modulation')}
               style={{ flex: 1, padding: '8px 6px', fontSize: '0.8rem' }}
             >
-              🎙️ Voice
+              Voice
             </Button>
             <Button
               variant={activeTabPanel === 'monitoring' ? 'primary' : 'secondary'}
               onClick={() => setActiveTabPanel('monitoring')}
               style={{ flex: 1, padding: '8px 6px', fontSize: '0.8rem' }}
             >
-              🛡️ Monitoring
+              Monitoring
             </Button>
             <Button
               variant={activeTabPanel === 'memory' ? 'primary' : 'secondary'}
               onClick={() => setActiveTabPanel('memory')}
               style={{ flex: 1, padding: '8px 6px', fontSize: '0.8rem' }}
             >
-              🧠 Memory
+              Memory
             </Button>
           </div>
 
@@ -251,9 +250,6 @@ export const PlaygroundPage: React.FC = () => {
           )}
         </aside>
       </main>
-
-      <MarketplaceSection />
-      <ProjectOverview />
       <Footer />
     </div>
   );

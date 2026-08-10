@@ -27,7 +27,6 @@ export const SpeechSimulator: React.FC<SpeechSimulatorProps> = ({
   return (
     <PanelSection
       title="Speech & TTS Simulator"
-      icon="💬"
       bgVariant="speech"
     >
       <div className="speech-control-group">
@@ -42,7 +41,6 @@ export const SpeechSimulator: React.FC<SpeechSimulatorProps> = ({
           <Button
             id="btn-speak-text"
             variant="primary"
-            icon="🗣️"
             onClick={() => {
               const trimmed = speechInputText.trim();
               if (trimmed) onSpeakText(trimmed);
@@ -53,7 +51,6 @@ export const SpeechSimulator: React.FC<SpeechSimulatorProps> = ({
           <Button
             id="btn-mapped-words"
             variant="secondary"
-            icon="📖"
             onClick={onToggleMappedWords}
           >
             Mapped Words

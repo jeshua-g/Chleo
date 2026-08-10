@@ -23,7 +23,6 @@ export const ActivitySimulator: React.FC<ActivitySimulatorProps> = ({ onSpeakTex
     <PanelSection
       id="section-activity"
       title="Simulate Browser Events"
-      icon="🌐"
       bgVariant="activity"
     >
       <div className="activity-grid">

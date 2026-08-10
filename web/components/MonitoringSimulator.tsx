@@ -110,9 +110,9 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
     tracker.setActiveDomain(domain);
     const result = await ruleStore.evaluateVisit(domain);
     if (result.isBlocked) {
-      setActiveSiteStatus(`🚫 BLOCKED: Access restricted to ${domain}`);
+      setActiveSiteStatus(`BLOCKED: Access restricted to ${domain}`);
     } else {
-      setActiveSiteStatus(`🌐 Active on ${domain}`);
+      setActiveSiteStatus(`Active on ${domain}`);
     }
     refreshRules();
     refreshMemoryLogs();
@@ -128,7 +128,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
   const handleUnblockWithPuzzle = async (domain: string) => {
     if (!ruleStore) return;
     await ruleStore.evaluatePuzzleUnblock(domain);
-    setActiveSiteStatus(`🔓 Unblocked ${domain} after puzzle challenge`);
+    setActiveSiteStatus(`Unblocked ${domain} after puzzle challenge`);
     refreshRules();
     refreshMemoryLogs();
   };
@@ -183,7 +183,6 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
     <PanelSection
       id="section-monitoring"
       title="Chleo Monitoring Engine Simulator"
-      icon="🛡️"
       bgVariant="tuning"
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', fontFamily: 'var(--font-body)' }}>
@@ -236,10 +235,10 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
 
           {/* Quick Domain Visit Buttons */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '12px' }}>
-            <Button variant="activity" onClick={() => handleVisitSite('youtube.com')}>📺 YouTube</Button>
-            <Button variant="activity" onClick={() => handleVisitSite('facebook.com')}>👥 Facebook</Button>
-            <Button variant="activity" onClick={() => handleVisitSite('github.com')}>💻 GitHub</Button>
-            <Button variant="activity" onClick={() => handleVisitSite('twitter.com')}>🐦 Twitter</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('youtube.com')}>YouTube</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('facebook.com')}>Facebook</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('github.com')}>GitHub</Button>
+            <Button variant="activity" onClick={() => handleVisitSite('twitter.com')}>Twitter</Button>
           </div>
         </div>
 
@@ -261,13 +260,13 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
               color: 'var(--text-dark, #2d2424)',
             }}
           />
-          <Button variant="primary" type="submit">⚡ Run Command</Button>
+          <Button variant="primary" type="submit">Run Command</Button>
         </form>
 
         {/* Quick Rule Configurator */}
         <div style={{ background: 'var(--bg-card-secondary, #f4ece0)', padding: '10px 12px', borderRadius: '8px', border: '2px solid var(--border-pixel, #2d2424)' }}>
           <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '8px', color: 'var(--text-dark, #2d2424)' }}>
-            ⚙️ Quick Site Limit Configurator
+            Quick Site Limit Configurator
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <input
@@ -286,7 +285,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
             />
             <span style={{ fontSize: '0.8rem', color: 'var(--text-dark, #2d2424)' }}>seconds</span>
             <Button variant="secondary" onClick={() => handleSetLimit(limitDomain, limitSecondsInput)}>
-              ⏱️ Set Limit
+              Set Limit
             </Button>
           </div>
         </div>
@@ -294,7 +293,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
         {/* Site Rules Table */}
         <div>
           <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '6px', color: 'var(--text-dark, #2d2424)' }}>
-            📋 Active Site Monitoring Rules:
+            Active Site Monitoring Rules:
           </div>
           <div style={{ maxHeight: '180px', overflowY: 'auto', border: '2px solid var(--border-pixel, #2d2424)', borderRadius: '8px', background: 'var(--bg-card, #fffbf5)' }}>
             <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
@@ -335,27 +334,27 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
                             variant="primary"
                             onClick={() => handleUnblockWithPuzzle(rule.domain)}
                             title="Unblock with Puzzle Challenge"
-                            style={{ padding: '3px 8px', fontSize: '0.95rem' }}
+                            style={{ padding: '3px 8px', fontSize: '0.8rem' }}
                           >
-                            🧩
+                            Unblock
                           </Button>
                         ) : (
                           <Button
                             variant="activity"
                             onClick={() => handleBlockSite(rule.domain)}
                             title="Block Domain"
-                            style={{ padding: '3px 8px', fontSize: '0.95rem' }}
+                            style={{ padding: '3px 8px', fontSize: '0.8rem' }}
                           >
-                            🚫
+                            Block
                           </Button>
                         )}
                         <Button
                           variant={rule.type === 'productive' ? 'primary' : 'secondary'}
                           onClick={() => handleToggleProductive(rule.domain, rule.type !== 'productive')}
                           title={rule.type === 'productive' ? 'Unmark Productive' : 'Mark Productive'}
-                          style={{ padding: '3px 8px', fontSize: '0.95rem' }}
+                          style={{ padding: '3px 8px', fontSize: '0.8rem' }}
                         >
-                          ⭐
+                          Productive
                         </Button>
                       </div>
                     </td>
@@ -369,7 +368,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
         {/* Modifiable Penalties & Rewards Controls */}
         <div style={{ background: 'var(--bg-card-secondary, #f4ece0)', padding: '10px 12px', borderRadius: '8px', border: '2px solid var(--border-pixel, #2d2424)' }}>
           <div style={{ fontWeight: 600, fontSize: '0.85rem', fontFamily: 'var(--font-pixel)', marginBottom: '8px', color: 'var(--text-dark, #2d2424)' }}>
-            🛠️ Modify Emotion Penalties &amp; Reward Rules:
+            Modify Emotion Penalties &amp; Reward Rules:
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
             <div>
@@ -414,7 +413,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
             </div>
           </div>
           <Button variant="primary" onClick={handleUpdatePenalties} style={{ marginTop: '10px', width: '100%' }}>
-            💾 Save Penalty &amp; Reward Rules
+            Save Penalty &amp; Reward Rules
           </Button>
         </div>
 
@@ -427,7 +426,7 @@ export const MonitoringSimulator: React.FC<MonitoringSimulatorProps> = ({
           fontSize: '0.75rem',
         }}>
           <div style={{ fontWeight: 600, fontFamily: 'var(--font-pixel)', marginBottom: '6px', color: 'var(--text-dark, #2d2424)' }}>
-            🧠 Short-Term Memory Event Stream:
+            Short-Term Memory Event Stream:
           </div>
           <div style={{ maxHeight: '100px', overflowY: 'auto', paddingRight: '4px' }}>
             {memoryEvents.length === 0 ? (

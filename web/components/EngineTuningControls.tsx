@@ -18,7 +18,6 @@ export const EngineTuningControls: React.FC<EngineTuningControlsProps> = ({
   return (
     <PanelSection
       title="Engine Tuning"
-      icon="⚙️"
       bgVariant="tuning"
     >
       <Slider

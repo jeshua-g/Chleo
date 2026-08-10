@@ -32,13 +32,11 @@ export const MappedWordsView: React.FC<MappedWordsViewProps> = ({
     >
       <div className="mapped-words-top">
         <h2 className="section-title">
-          <span className="title-icon">📖</span>
           Mapped Words <Badge variant="count" id="mapped-words-count">({filteredWords.length})</Badge>
         </h2>
         <Button
           id="btn-back-mapped"
           variant="back"
-          icon="⬅️"
           onClick={onBack}
         >
           Back
@@ -51,7 +49,7 @@ export const MappedWordsView: React.FC<MappedWordsViewProps> = ({
           className="search-input"
           value={filterQuery}
           onChange={setFilterQuery}
-          placeholder="🔍 Search mapped words..."
+          placeholder="Search mapped words..."
         />
       </div>
 

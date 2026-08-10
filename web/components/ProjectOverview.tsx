@@ -6,14 +6,13 @@ export const ProjectOverview: React.FC = () => {
   return (
     <PanelSection
       title="Project Overview & Developer Contact"
-      icon="📌"
       bgVariant="discussions"
       className="discussions-section"
       extraHeader={<Badge variant="status">Active Project</Badge>}
     >
       <div className="readme-content-card">
         <div className="readme-banner">
-          <h3 className="readme-title">Chleo 🎀</h3>
+          <h3 className="readme-title">Chleo</h3>
           <p className="readme-subtitle">
             An interactive desktop and browser companion designed to keep you on track. She monitors your digital
             activity, playfully guides you toward better habits, and adds life to your workspace.
@@ -22,7 +21,7 @@ export const ProjectOverview: React.FC = () => {
 
         <div className="features-grid">
           <div className="feature-card">
-            <h4>🛡️ Productivity &amp; Focus</h4>
+            <h4>Productivity &amp; Focus</h4>
             <ul>
               <li><strong>Website Monitoring:</strong> Tracks time spent on distracting sites and offers productive alternatives.</li>
               <li><strong>Puzzle-Gated Blocking:</strong> Block specific websites. Solve a puzzle to unlock them.</li>
@@ -32,7 +31,7 @@ export const ProjectOverview: React.FC = () => {
           </div>
 
           <div className="feature-card">
-            <h4>✨ Interactions &amp; Personality</h4>
+            <h4>Interactions &amp; Personality</h4>
             <ul>
               <li><strong>Dynamic Emotions:</strong> Chleo reacts to behavior. She gets happy, angry, or grumpy <code>:|</code>.</li>
               <li><strong>Companion Commentary:</strong> Chimes in with comments about what you&apos;re working on.</li>
@@ -42,7 +41,7 @@ export const ProjectOverview: React.FC = () => {
           </div>
 
           <div className="feature-card">
-            <h4>🎨 Composable Pixel Engine</h4>
+            <h4>Composable Pixel Engine</h4>
             <ul>
               <li><strong>Layered Compositor:</strong> Independent body, eyes, mouth, and eyebrow layers.</li>
               <li><strong>Custom Animations:</strong> Frame-accurate sprite sheet playback and keyframe sync.</li>
@@ -52,7 +51,6 @@ export const ProjectOverview: React.FC = () => {
         </div>
 
         <div className="inspiration-box">
-          <span className="quote-icon">💡</span>
           <p>
             <em>&quot;The concept and assets for Chleo are inspired by my girlfriend (and yes, she looks just as beautiful, if not more).&quot;</em>
           </p>
@@ -60,7 +58,7 @@ export const ProjectOverview: React.FC = () => {
       </div>
 
       <div className="contact-section">
-        <h3 className="contact-title">📬 Contact Me</h3>
+        <h3 className="contact-title">Contact Me</h3>
         <div className="social-grid">
           <a
             href="https://www.facebook.com/qwersdfzxc"
@@ -68,10 +66,9 @@ export const ProjectOverview: React.FC = () => {
             rel="noopener noreferrer"
             className="social-card fb"
           >
-            <span className="social-icon">👤</span>
             <div className="social-info">
               <span className="social-name">Facebook</span>
-              <span className="social-handle">Christian Lee Lunaba</span>
+              <span className="social-handle"></span>
             </div>
           </a>
 
@@ -81,10 +78,9 @@ export const ProjectOverview: React.FC = () => {
             rel="noopener noreferrer"
             className="social-card li"
           >
-            <span className="social-icon">💼</span>
             <div className="social-info">
               <span className="social-name">LinkedIn</span>
-              <span className="social-handle">Christian Lee Lunaba</span>
+              <span className="social-handle"></span>
             </div>
           </a>
 
@@ -94,10 +90,9 @@ export const ProjectOverview: React.FC = () => {
             rel="noopener noreferrer"
             className="social-card gh"
           >
-            <span className="social-icon">🐙</span>
             <div className="social-info">
               <span className="social-name">GitHub</span>
-              <span className="social-handle">@LunabaLeeris</span>
+              <span className="social-handle"></span>
             </div>
           </a>
         </div>

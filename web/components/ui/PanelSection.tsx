@@ -28,8 +28,8 @@ export const PanelSection: React.FC<PanelSectionProps> = ({
   return (
     <div id={id} className={combinedClass} style={style}>
       {(title || icon || extraHeader) && (
-        <div className={extraHeader ? 'section-header' : ''}>
-          {title && (
+        <div className="section-header">
+          {(title || icon) && (
             <h2 className="section-title">
               {icon && <span className="title-icon">{icon}</span>}
               {title}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Badge } from './ui';
 
 interface HeaderProps {
-  activeTab: 'playground' | 'marketplace' | 'blog';
+  activeTab: 'home' | 'playground' | 'marketplace' | 'blog';
   theme?: 'cream' | 'grid';
   onThemeChange?: (theme: 'cream' | 'grid') => void;
   onToggleDrawer?: () => void;
@@ -17,36 +17,42 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   return (
     <header className="app-header panel-bg-header">
-      <div className="brand">
+      <a href="./index.html" className="brand" style={{ textDecoration: 'none', color: 'inherit' }}>
         <div className="brand-avatar-icon">
           <img src="/logo.png" alt="CHLEO Logo" className="brand-logo-img" />
         </div>
         <h1 className="brand-title">
           CHLEO{' '}
           <span className="pixel-tag">
-            {activeTab === 'playground' ? 'Playground' : activeTab === 'marketplace' ? 'Marketplace' : 'Blog'}
+            {activeTab === 'home' ? 'Home' : activeTab === 'playground' ? 'Playground' : activeTab === 'marketplace' ? 'Marketplace' : 'Features'}
           </span>
         </h1>
-      </div>
+      </a>
 
       <nav className="app-nav-tabs">
         <a
           href="./index.html"
+          className={`nav-tab ${activeTab === 'home' ? 'active' : ''}`}
+        >
+          Home
+        </a>
+        <a
+          href="./playground.html"
           className={`nav-tab ${activeTab === 'playground' ? 'active' : ''}`}
         >
-          <span className="nav-icon">🎮</span> Playground
+          Playground
         </a>
         <a
           href="./marketplace.html"
           className={`nav-tab ${activeTab === 'marketplace' ? 'active' : 'disabled-tab'}`}
         >
-          <span className="nav-icon">🛍️</span> Marketplace <Badge variant="nav">Dev</Badge>
+          Marketplace <Badge variant="nav">Dev</Badge>
         </a>
         <a
           href="./blog.html"
-          className={`nav-tab ${activeTab === 'blog' ? 'active' : 'disabled-tab'}`}
+          className={`nav-tab ${activeTab === 'blog' ? 'active' : ''}`}
         >
-          <span className="nav-icon">📰</span> Blog &amp; Updates <Badge variant="nav">Dev</Badge>
+          Features <Badge variant="nav">Dev</Badge>
         </a>
       </nav>
 
@@ -58,14 +64,13 @@ export const Header: React.FC<HeaderProps> = ({
           className="contribute-btn"
           title="Contribute on GitHub"
         >
-          <span className="btn-icon">⭐</span> Contribute
+          Contribute
         </a>
 
         {activeTab === 'playground' && onToggleDrawer && (
           <Button
             id="btn-toggle-drawer"
             variant="drawer-toggle"
-            icon="⚙️"
             title="Open Controls Sidebar"
             onClick={onToggleDrawer}
           >

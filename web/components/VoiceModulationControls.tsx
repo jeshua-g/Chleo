@@ -42,7 +42,6 @@ export const VoiceModulationControls: React.FC<VoiceModulationControlsProps> = (
     <PanelSection
       id="section-voice-modulation"
       title="Robotic Voice Modulation"
-      icon="🎙️"
       bgVariant="tuning"
     >
       <Slider
@@ -165,7 +164,6 @@ export const VoiceModulationControls: React.FC<VoiceModulationControlsProps> = (
         <Button
           id="btn-test-voice"
           variant="primary"
-          icon="🔊"
           title="Test active voice settings"
           onClick={onTestVoice}
         >
@@ -175,7 +173,6 @@ export const VoiceModulationControls: React.FC<VoiceModulationControlsProps> = (
           <Button
             id="btn-save-voice-config"
             variant="accent"
-            icon="💾"
             title="Save configuration as default"
             onClick={handleSave}
           >
@@ -185,7 +182,6 @@ export const VoiceModulationControls: React.FC<VoiceModulationControlsProps> = (
         <Button
           id="btn-reset-voice-config"
           variant="secondary"
-          icon="🔄"
           title="Reset to factory defaults"
           onClick={handleReset}
         >

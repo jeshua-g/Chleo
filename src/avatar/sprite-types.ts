@@ -29,6 +29,8 @@ export type ChleoExpression =
   | 'close_eyes'
   | 'angry'
   | 'yawn'
+  | 'focused'
+  | 'happy'
   | 'question';
 
 /** Alias for backward compatibility during CHLEO rebranding. */
