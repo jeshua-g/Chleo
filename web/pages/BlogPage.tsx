@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { FeatureModuleCard } from '../components/FeatureModuleCard';
+import { FeatureDetailPage } from './FeatureDetailPage';
 
 // Icons from root assets folder
 import ICON_BRAIN from '../../assets/brain.png';
@@ -13,6 +15,7 @@ interface FeatureCardData {
   title: string;
   description: string;
   icon: string;
+  locked: boolean;
 }
 
 const FEATURE_PANELS: FeatureCardData[] = [
@@ -21,28 +24,50 @@ const FEATURE_PANELS: FeatureCardData[] = [
     title: 'Intelligence',
     description: 'Various behaviors and customizable rules powered by LLMs for realism.',
     icon: ICON_BRAIN,
+    locked: true,
   },
   {
     id: 'monitoring',
     title: 'Monitoring',
     description: 'Monitors your activity and guides you to be productive.',
     icon: ICON_EYES,
+    locked: true,
   },
   {
     id: 'speech',
     title: 'Speech',
     description: 'Nuanced and realistic speech animation by using visemes.',
     icon: ICON_MOUTH,
+    locked: false,
   },
   {
     id: 'emotions',
     title: 'Emotions',
     description: "Have various emotions using Plutchik's wheel.",
     icon: ICON_HEART,
+    locked: true,
   },
 ];
 
 export const BlogPage: React.FC = () => {
+  const [activeFeature, setActiveFeature] = useState<string | null>(null);
+
+  // If a feature is selected, render its detail page
+  if (activeFeature) {
+    const panel = FEATURE_PANELS.find(p => p.id === activeFeature);
+    if (panel) {
+      return (
+        <FeatureDetailPage
+          featureId={panel.id}
+          featureTitle={panel.title}
+          featureIcon={panel.icon}
+          onBack={() => setActiveFeature(null)}
+        />
+      );
+    }
+  }
+
+  // Grid view — show all feature cards
   return (
     <div className="app-layout">
       <Header activeTab="blog" />
@@ -66,18 +91,15 @@ export const BlogPage: React.FC = () => {
 
           <div className="features-cards-grid">
             {FEATURE_PANELS.map(panel => (
-              <div key={panel.id} id={panel.id} className="feature-module-card disabled-card">
-                <div className="feature-card-header">
-                  <div className="feature-card-icon-wrap">
-                    <img src={panel.icon} alt={panel.title} className="feature-card-icon-img" />
-                  </div>
-                  <span className="badge-coming-soon">[Coming Soon]</span>
-                </div>
-                <div className="feature-card-body">
-                  <h4 className="feature-card-title">{panel.title}</h4>
-                  <p className="feature-card-desc">{panel.description}</p>
-                </div>
-              </div>
+              <FeatureModuleCard
+                key={panel.id}
+                id={panel.id}
+                title={panel.title}
+                description={panel.description}
+                icon={panel.icon}
+                locked={panel.locked}
+                onClick={() => setActiveFeature(panel.id)}
+              />
             ))}
           </div>
         </section>
