@@ -8,3 +8,4 @@ export { ContentDivider } from './ContentDivider';
 export { ContentList } from './ContentList';
 export { ContentCode } from './ContentCode';
 export { ContentQuote } from './ContentQuote';
+export { ContentTable } from '../../content-pages/ContentTable';
