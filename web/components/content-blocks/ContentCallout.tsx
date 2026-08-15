@@ -7,7 +7,7 @@ interface ContentCalloutProps {
 }
 
 const CALLOUT_ICONS: Record<string, string> = {
-  info: 'ℹ️',
+  info: '☝️',
   tip: '💡',
   warning: '⚠️',
   note: '📝',
