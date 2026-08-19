@@ -1,13 +1,8 @@
 /** Avatar part names rendered from bottom to top order. */
-export type PartName = "body" | "eyes" | "mouth" | "eyebrows";
+export type PartName = 'body' | 'eyes' | 'mouth' | 'eyebrows';
 
 /** Render order array. Body draws first. Eyebrows draw last. */
-export const PART_RENDER_ORDER: PartName[] = [
-  "body",
-  "eyes",
-  "mouth",
-  "eyebrows",
-];
+export const PART_RENDER_ORDER: PartName[] = ['body', 'eyes', 'mouth', 'eyebrows'];
 
 /** Standard 2D pixel coordinate offset. */
 export interface Vec2 {
@@ -21,22 +16,22 @@ export interface Vec2 {
  * - 'once': plays one time and returns to default animation.
  * - number: plays N complete cycles then returns to default animation.
  */
-export type LoopMode = "infinite" | "once" | number;
+export type LoopMode = 'infinite' | 'once' | number;
 
 /**
  * Supported high-level expression presets for CHLEO reactions.
  */
 export type ChleoExpression =
-  | "idle"
-  | "blink"
-  | "speak"
-  | "sleep"
-  | "close_eyes"
-  | "angry"
-  | "yawn"
-  | "focused"
-  | "happy"
-  | "question";
+  | 'idle'
+  | 'blink'
+  | 'speak'
+  | 'sleep'
+  | 'close_eyes'
+  | 'angry'
+  | 'yawn'
+  | 'focused'
+  | 'happy'
+  | 'question';
 
 /** Alias for backward compatibility during CHLEO rebranding. */
 export type CleoExpression = ChleoExpression;
@@ -51,7 +46,7 @@ interface BaseAnimationDef {
 }
 
 export interface SpriteSheetDef extends BaseAnimationDef {
-  type: "spritesheet";
+  type: 'spritesheet';
   src: string;
   frameCount: number;
   frameWidth: number;
@@ -59,7 +54,7 @@ export interface SpriteSheetDef extends BaseAnimationDef {
 }
 
 export interface FrameArrayDef extends BaseAnimationDef {
-  type: "framearray";
+  type: 'framearray';
   srcArray: string[] | null;
 
   /**

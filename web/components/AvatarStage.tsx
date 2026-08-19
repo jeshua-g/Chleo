@@ -1,6 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
-import { AvatarCompositor, defaultAvatarConfig } from "../../src/avatar";
-import { Button, Badge } from "./ui";
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  AvatarCompositor,
+  defaultAvatarConfig,
+} from '../../src/avatar';
+import { Button, Badge } from './ui';
 
 interface AvatarStageProps {
   speechBubbleText: string;
@@ -8,8 +11,8 @@ interface AvatarStageProps {
   activeExpressionLabel: string;
   renderScale?: number;
   compact?: boolean;
-  theme?: "cream" | "grid";
-  onThemeChange?: (theme: "cream" | "grid") => void;
+  theme?: 'cream' | 'grid';
+  onThemeChange?: (theme: 'cream' | 'grid') => void;
   onCompositorInit?: (compositor: AvatarCompositor) => void;
   onBlink?: () => void;
 }
@@ -21,7 +24,7 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   activeExpressionLabel,
   renderScale = 6,
   compact = false,
-  theme = "cream",
+  theme = 'cream',
   onThemeChange,
   onCompositorInit,
   onBlink,
@@ -82,8 +85,8 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
     if (!wrapper) return;
 
     isDraggingRef.current = true;
-    wrapper.classList.remove("grab-cursor");
-    wrapper.classList.add("grabbing-cursor");
+    wrapper.classList.remove('grab-cursor');
+    wrapper.classList.add('grabbing-cursor');
 
     const rect = wrapper.getBoundingClientRect();
     offsetRef.current = {
@@ -92,7 +95,7 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
     };
 
     if (compositorRef.current) {
-      compositorRef.current.setExpression("question", "Dragging");
+      compositorRef.current.setExpression('question', 'Dragging');
     }
   };
 
@@ -106,16 +109,10 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
     let newX = clientX - stageRect.left - offsetRef.current.x;
     let newY = clientY - stageRect.top - offsetRef.current.y;
 
-    newX = Math.max(
-      10,
-      Math.min(stageRect.width - wrapper.offsetWidth - 10, newX),
-    );
-    newY = Math.max(
-      10,
-      Math.min(stageRect.height - wrapper.offsetHeight - 10, newY),
-    );
+    newX = Math.max(10, Math.min(stageRect.width - wrapper.offsetWidth - 10, newX));
+    newY = Math.max(10, Math.min(stageRect.height - wrapper.offsetHeight - 10, newY));
 
-    wrapper.style.position = "absolute";
+    wrapper.style.position = 'absolute';
     wrapper.style.left = `${newX}px`;
     wrapper.style.top = `${newY}px`;
   };
@@ -125,11 +122,11 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
     isDraggingRef.current = false;
     const wrapper = wrapperRef.current;
     if (wrapper) {
-      wrapper.classList.remove("grabbing-cursor");
-      wrapper.classList.add("grab-cursor");
+      wrapper.classList.remove('grabbing-cursor');
+      wrapper.classList.add('grab-cursor');
     }
     if (compositorRef.current) {
-      compositorRef.current.setExpression("idle");
+      compositorRef.current.setExpression('idle');
     }
   };
 
@@ -153,24 +150,24 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
       endDrag();
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("touchmove", handleTouchMove, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd);
-    window.addEventListener("touchcancel", handleTouchEnd);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
 
     return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("touchmove", handleTouchMove);
-      window.removeEventListener("touchend", handleTouchEnd);
-      window.removeEventListener("touchcancel", handleTouchEnd);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
     };
   }, []);
 
   const handleCanvasClick = () => {
     if (compositorRef.current) {
-      compositorRef.current.setExpression("blink", "Blinking");
+      compositorRef.current.setExpression('blink', 'Blinking');
     }
     if (onBlink) {
       onBlink();
@@ -179,14 +176,10 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
 
   return (
     <section
-      className={`avatar-stage-container${compact ? " editor-preview" : ""}`}
+      className={`avatar-stage-container${compact ? ' editor-preview' : ''}`}
       id="stage-container"
     >
-      <div
-        className="stage-card panel-bg-stage"
-        id="avatar-stage"
-        ref={stageRef}
-      >
+      <div className="stage-card panel-bg-stage" id="avatar-stage" ref={stageRef}>
         {!compact && (
           <div className="stage-overlay-top-left">
             <Badge variant="pill" icon={<span className="pulse-dot" />}>
@@ -201,18 +194,18 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
               <Button
                 id="theme-cream-btn"
                 variant="theme"
-                active={theme === "cream"}
+                active={theme === 'cream'}
                 title="Cozy Cream Pixel Theme"
-                onClick={() => onThemeChange("cream")}
+                onClick={() => onThemeChange('cream')}
               >
                 Cream
               </Button>
               <Button
                 id="theme-grid-btn"
                 variant="theme"
-                active={theme === "grid"}
+                active={theme === 'grid'}
                 title="Pixel Grid Stage"
-                onClick={() => onThemeChange("grid")}
+                onClick={() => onThemeChange('grid')}
               >
                 Grid
               </Button>
@@ -228,13 +221,12 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
             if (e.button === 0) startDrag(e.clientX, e.clientY);
           }}
           onTouchStart={(e) => {
-            if (e.touches.length === 1)
-              startDrag(e.touches[0].clientX, e.touches[0].clientY);
+            if (e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
           }}
         >
           <div
             id="web-speech-bubble"
-            className={`speech-bubble ${isBubbleVisible ? "visible" : ""}`}
+            className={`speech-bubble ${isBubbleVisible ? 'visible' : ''}`}
           >
             {speechBubbleText}
           </div>

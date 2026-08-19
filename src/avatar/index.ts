@@ -1,12 +1,7 @@
-export { AvatarCompositor } from "./avatar-compositor";
-export type { ComposedSpeakResult, SpeakOptions } from "./avatar-compositor";
-export { defaultAvatarConfig } from "./avatar-config";
-export {
-  preloadAvatarSprites,
-  loadImage,
-  clearImageCache,
-  ensureImagesLoaded,
-} from "./sprite-loader";
+export { AvatarCompositor } from './avatar-compositor';
+export type { ComposedSpeakResult, SpeakOptions } from './avatar-compositor';
+export { defaultAvatarConfig } from './avatar-config';
+export { preloadAvatarSprites, loadImage, clearImageCache, ensureImagesLoaded } from './sprite-loader';
 export {
   WORD_FRAME_MAP,
   DEFAULT_WORD_FRAMES,
@@ -16,8 +11,8 @@ export {
   EYE_FRAMES,
   tokenizeText,
   getWordFrames,
-} from "./speak-frame-map";
-export type { WordFrames, SpeechToken } from "./speak-frame-map";
+} from './speak-frame-map';
+export type { WordFrames, SpeechToken } from './speak-frame-map';
 export type {
   PartName,
   Vec2,
@@ -30,8 +25,8 @@ export type {
   AvatarConfig,
   ChleoExpression,
   CleoExpression,
-} from "./sprite-types";
-export { PART_RENDER_ORDER } from "./sprite-types";
+} from './sprite-types';
+export { PART_RENDER_ORDER } from './sprite-types';
 export {
   SPRITE_CLIP_FILE,
   CLIP_EXPRESSIONS,
@@ -42,39 +37,29 @@ export {
   isSpriteApplyPayload,
   isSpriteResetPayload,
   applyClipStore,
-} from "./clip-store";
+} from './clip-store';
 export type {
   DesktopClipStore,
   SpriteApplyPayload,
   SpriteResetPayload,
-} from "./clip-store";
-export {
-  RoboticTTSModulator,
-  defaultTTSModulator,
-  DEFAULT_MODULATION_CONFIG,
-} from "./tts/robotic-tts-modulator";
-export type {
-  RoboticModulationConfig,
-  TTSModulatorConfig,
-} from "./tts/robotic-tts-modulator";
-export { TTSAnalyzer, defaultTTSAnalyzer } from "./tts/tts-analyzer";
-export type { TTSWordTiming, TTSPhraseAnalysis } from "./tts/tts-analyzer";
-export {
-  SpeechOrchestrator,
-  defaultSpeechOrchestrator,
-} from "./tts/speech-orchestrator";
-export type { PreRenderedSpeechPacket } from "./tts/speech-orchestrator";
+} from './clip-store';
+export { RoboticTTSModulator, defaultTTSModulator, DEFAULT_MODULATION_CONFIG } from './tts/robotic-tts-modulator';
+export type { RoboticModulationConfig, TTSModulatorConfig } from './tts/robotic-tts-modulator';
+export { TTSAnalyzer, defaultTTSAnalyzer } from './tts/tts-analyzer';
+export type { TTSWordTiming, TTSPhraseAnalysis } from './tts/tts-analyzer';
+export { SpeechOrchestrator, defaultSpeechOrchestrator } from './tts/speech-orchestrator';
+export type { PreRenderedSpeechPacket } from './tts/speech-orchestrator';
 
 // --- Emotion Engine Exports ---
-export { EmotionsOrchestrator } from "./emotions/emotions-orchestrator";
+export { EmotionsOrchestrator } from './emotions/emotions-orchestrator';
 export {
   getAvatarEmotionFrames,
   EMOTION_TO_FAMILY,
   COMBINED_FAMILY_RESPONSE_MAP,
   EXPLICIT_PAIR_OVERRIDES,
-} from "./emotions/response-frame-map";
-export type { EmotionFamily } from "./emotions/response-frame-map";
-export { LLMEmotionServiceScaffold } from "./emotions/llm-emotion-service";
+} from './emotions/response-frame-map';
+export type { EmotionFamily } from './emotions/response-frame-map';
+export { LLMEmotionServiceScaffold } from './emotions/llm-emotion-service';
 export type {
   PrimaryEmotion,
   EmotionalState,
@@ -83,5 +68,8 @@ export type {
   BehavioralData,
   LLMEmotionOutput,
   EmotionFrameConfig,
-} from "./emotions/emotion-types";
-export { PRIMARY_EMOTIONS } from "./emotions/emotion-types";
+} from './emotions/emotion-types';
+export { PRIMARY_EMOTIONS } from './emotions/emotion-types';
+
+
+

@@ -1,17 +1,18 @@
-import type { AvatarConfig } from "./sprite-types";
+import type { AvatarConfig } from './sprite-types';
 
-import SPRITE_BODY_IDLE from "../assets/sprites/body/body_idle.png";
-import SPRITE_EYES_IDLE from "../assets/sprites/eyes/eyes_idle.png";
-import SPRITE_EYES_BLINK from "../assets/sprites/eyes/eyes_blink.png";
-import SPRITE_MOUTH_IDLE from "../assets/sprites/mouth/mouth_idle.png";
-import SPRITE_MOUTH_SPEAK from "../assets/sprites/mouth/mouth_speak.png";
-import SPRITE_BROWS_IDLE from "../assets/sprites/brows/brows_idle.png";
-import SPRITE_BROWS_QUESTION from "../assets/frames/brows/brows_ru.png";
-import FRAME_BROWS_DOWN from "../assets/frames/brows/brows_tg.png";
-import FRAME_BROWS_UP from "../assets/frames/brows/brows_bu.png";
-import FRAME_EYES_OPENED from "../assets/frames/eyes/eyes_wide.png";
-import FRAME_EYES_HALFCLOSED from "../assets/frames/eyes/eyes_bhc.png";
-import FRAME_EYES_RIGHT_HALFCLOSED from "../assets/frames/eyes/eyes_rhc.png";
+import SPRITE_BODY_IDLE from '../assets/sprites/body/body_idle.png';
+import SPRITE_EYES_IDLE from '../assets/sprites/eyes/eyes_idle.png';
+import SPRITE_EYES_BLINK from '../assets/sprites/eyes/eyes_blink.png';
+import SPRITE_MOUTH_IDLE from '../assets/sprites/mouth/mouth_idle.png';
+import SPRITE_MOUTH_SPEAK from '../assets/sprites/mouth/mouth_speak.png';
+import SPRITE_BROWS_IDLE from '../assets/sprites/brows/brows_idle.png';
+import SPRITE_BROWS_QUESTION from '../assets/frames/brows/brows_ru.png';
+import FRAME_BROWS_DOWN from '../assets/frames/brows/brows_tg.png'
+import FRAME_BROWS_UP from '../assets/frames/brows/brows_bu.png'
+import FRAME_EYES_OPENED from '../assets/frames/eyes/eyes_wide.png'
+import FRAME_EYES_HALFCLOSED from '../assets/frames/eyes/eyes_bhc.png'
+import FRAME_EYES_RIGHT_HALFCLOSED from '../assets/frames/eyes/eyes_rhc.png'
+
 
 export const defaultAvatarConfig: AvatarConfig = {
   canvasWidth: 64,
@@ -30,7 +31,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 6,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
         sleep: {
           type: "spritesheet",
@@ -38,10 +39,10 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 6,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
       },
-      defaultAnimation: "idle",
+      defaultAnimation: 'idle',
     },
 
     eyes: {
@@ -53,7 +54,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
         blink: {
           type: "spritesheet",
@@ -61,7 +62,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 3,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "once",
+          loop: 'once',
         },
         close_eyes: {
           type: "spritesheet",
@@ -69,7 +70,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 3,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
         sleep: {
           type: "spritesheet",
@@ -77,22 +78,22 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 3,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
         focused: {
           type: "framearray",
-          srcArray: [FRAME_EYES_HALFCLOSED],
+          srcArray: [FRAME_EYES_HALFCLOSED]
         },
         question: {
           type: "framearray",
-          srcArray: [FRAME_EYES_RIGHT_HALFCLOSED],
+          srcArray: [FRAME_EYES_RIGHT_HALFCLOSED]
         },
         happy: {
           type: "framearray",
-          srcArray: [FRAME_EYES_OPENED],
+          srcArray: [FRAME_EYES_OPENED]
         },
       },
-      defaultAnimation: "idle",
+      defaultAnimation: 'idle',
     },
 
     mouth: {
@@ -104,14 +105,14 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
         speak: {
           // Dynamically composed at runtime by SpeechOrchestrator from TTS timing.
           // This is a placeholder slot; srcArray is injected by playSpeakSequence().
           type: "framearray",
           srcArray: null,
-          loop: "once",
+          loop: 'once',
         },
         yawn: {
           type: "spritesheet",
@@ -119,10 +120,10 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 6,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "once",
+          loop: 'once',
         },
       },
-      defaultAnimation: "idle",
+      defaultAnimation: 'idle',
     },
 
     eyebrows: {
@@ -134,7 +135,7 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
-          loop: "infinite",
+          loop: 'infinite',
         },
         angry: {
           type: "spritesheet",
@@ -142,17 +143,21 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
-          frameOffsets: [{ x: 0, y: 1 }],
-          loop: "infinite",
+          frameOffsets: [
+            { x: 0, y: 1 },
+          ],
+          loop: 'infinite',
         },
         focused: {
           type: "framearray",
           srcArray: [FRAME_BROWS_DOWN],
-          frameOffsets: [{ x: 0, y: 1 }],
+          frameOffsets: [
+            { x: 0, y: 1 },
+          ],
         },
         happy: {
           type: "framearray",
-          srcArray: [FRAME_BROWS_UP],
+          srcArray: [FRAME_BROWS_UP]
         },
         question: {
           type: "spritesheet",
@@ -160,11 +165,13 @@ export const defaultAvatarConfig: AvatarConfig = {
           frameCount: 1,
           frameWidth: 64,
           frameHeight: 64,
-          frameOffsets: [{ x: 0, y: 0 }],
-          loop: "once",
+          frameOffsets: [
+            { x: 0, y: 0 },
+          ],
+          loop: 'once',
         },
       },
-      defaultAnimation: "idle",
+      defaultAnimation: 'idle',
     },
   },
 
