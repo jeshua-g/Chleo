@@ -1,20 +1,20 @@
-import type { AvatarCompositor } from './avatar-compositor';
-import type { ChleoExpression, PartName } from './sprite-types';
-import { PART_RENDER_ORDER } from './sprite-types';
+import type { AvatarCompositor } from "./avatar-compositor";
+import type { ChleoExpression, PartName } from "./sprite-types";
+import { PART_RENDER_ORDER } from "./sprite-types";
 
-export const SPRITE_CLIP_FILE = 'chleo-sprite-clips.json';
+export const SPRITE_CLIP_FILE = "chleo-sprite-clips.json";
 
 export const CLIP_EXPRESSIONS: ChleoExpression[] = [
-  'idle',
-  'blink',
-  'speak',
-  'sleep',
-  'close_eyes',
-  'angry',
-  'yawn',
-  'focused',
-  'happy',
-  'question',
+  "idle",
+  "blink",
+  "speak",
+  "sleep",
+  "close_eyes",
+  "angry",
+  "yawn",
+  "focused",
+  "happy",
+  "question",
 ];
 
 export interface DesktopClipStore {
@@ -24,7 +24,7 @@ export interface DesktopClipStore {
 }
 
 export interface SpriteApplyPayload {
-  type: 'sprite-apply';
+  type: "sprite-apply";
   part: PartName;
   expression: ChleoExpression;
   frames: string[];
@@ -32,7 +32,7 @@ export interface SpriteApplyPayload {
 }
 
 export interface SpriteResetPayload {
-  type: 'sprite-reset';
+  type: "sprite-reset";
   part: PartName;
   expression: ChleoExpression;
 }
@@ -53,12 +53,12 @@ export function parseClipStore(raw: string | null): DesktopClipStore {
   if (!raw) return emptyClipStore();
   try {
     const parsed = JSON.parse(raw) as DesktopClipStore;
-    if (parsed?.v !== 3 || typeof parsed.clips !== 'object' || !parsed.clips) {
+    if (parsed?.v !== 3 || typeof parsed.clips !== "object" || !parsed.clips) {
       return emptyClipStore();
     }
     return {
       v: 3,
-      fps: typeof parsed.fps === 'number' ? parsed.fps : 12,
+      fps: typeof parsed.fps === "number" ? parsed.fps : 12,
       clips: parsed.clips,
     };
   } catch {
@@ -66,7 +66,10 @@ export function parseClipStore(raw: string | null): DesktopClipStore {
   }
 }
 
-export function mergeClipApply(store: DesktopClipStore, payload: SpriteApplyPayload): DesktopClipStore {
+export function mergeClipApply(
+  store: DesktopClipStore,
+  payload: SpriteApplyPayload,
+): DesktopClipStore {
   const expressionClips = { ...(store.clips[payload.expression] ?? {}) };
   expressionClips[payload.part] = payload.frames;
   return {
@@ -76,7 +79,10 @@ export function mergeClipApply(store: DesktopClipStore, payload: SpriteApplyPayl
   };
 }
 
-export function mergeClipReset(store: DesktopClipStore, payload: SpriteResetPayload): DesktopClipStore {
+export function mergeClipReset(
+  store: DesktopClipStore,
+  payload: SpriteResetPayload,
+): DesktopClipStore {
   const expressionClips = { ...(store.clips[payload.expression] ?? {}) };
   delete expressionClips[payload.part];
   const clips = { ...store.clips };
@@ -88,29 +94,40 @@ export function mergeClipReset(store: DesktopClipStore, payload: SpriteResetPayl
   return { ...store, clips };
 }
 
-export function isSpriteApplyPayload(data: unknown): data is SpriteApplyPayload {
-  if (!data || typeof data !== 'object') return false;
+export function isSpriteApplyPayload(
+  data: unknown,
+): data is SpriteApplyPayload {
+  if (!data || typeof data !== "object") return false;
   const msg = data as SpriteApplyPayload;
   return (
-    msg.type === 'sprite-apply' &&
+    msg.type === "sprite-apply" &&
     isPartName(msg.part) &&
     isClipExpression(msg.expression) &&
     Array.isArray(msg.frames) &&
     msg.frames.length > 0 &&
     msg.frames.length <= 24 &&
-    msg.frames.every((frame) => typeof frame === 'string' && frame.startsWith('data:image/png'))
+    msg.frames.every(
+      (frame) =>
+        typeof frame === "string" && frame.startsWith("data:image/png"),
+    )
   );
 }
 
-export function isSpriteResetPayload(data: unknown): data is SpriteResetPayload {
-  if (!data || typeof data !== 'object') return false;
+export function isSpriteResetPayload(
+  data: unknown,
+): data is SpriteResetPayload {
+  if (!data || typeof data !== "object") return false;
   const msg = data as SpriteResetPayload;
-  return msg.type === 'sprite-reset' && isPartName(msg.part) && isClipExpression(msg.expression);
+  return (
+    msg.type === "sprite-reset" &&
+    isPartName(msg.part) &&
+    isClipExpression(msg.expression)
+  );
 }
 
 export async function applyClipStore(
   compositor: AvatarCompositor,
-  store: DesktopClipStore
+  store: DesktopClipStore,
 ): Promise<void> {
   for (const expression of CLIP_EXPRESSIONS) {
     const byPart = store.clips[expression];
