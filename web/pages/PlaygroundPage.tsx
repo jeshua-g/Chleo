@@ -194,7 +194,7 @@ export const PlaygroundPage: React.FC = () => {
           />
 
           {/* Sub-panel Tabs for Voice Modulation, Monitoring Simulator & Memory */}
-          <div style={{ display: 'flex', gap: '6px', marginTop: '12px', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '12px', marginBottom: '8px' }}>
             <Button
               variant={activeTabPanel === 'modulation' ? 'primary' : 'secondary'}
               onClick={() => setActiveTabPanel('modulation')}

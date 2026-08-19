@@ -1,12 +1,23 @@
 import './index.css';
-import { AvatarCompositor, defaultAvatarConfig, defaultSpeechOrchestrator } from './avatar';
+import {
+  AvatarCompositor,
+  defaultAvatarConfig,
+  defaultSpeechOrchestrator,
+  SPRITE_CLIP_FILE,
+  parseClipStore,
+  applyClipStore,
+  isSpriteApplyPayload,
+  isSpriteResetPayload,
+} from './avatar';
 
-// Type checking definitions for exposed window API
 interface Window {
   electronAPI: {
     onBrowserActivity: (callback: (data: { url: string; title: string }) => void) => void;
+    onSpriteApply: (callback: (data: unknown) => void) => void;
+    onSpriteReset: (callback: (data: unknown) => void) => void;
     setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void;
     dragWindow: (dx: number, dy: number) => void;
+    readMemoryFile: (filename: string) => Promise<string | null>;
   };
 }
 
@@ -16,10 +27,24 @@ const canvas = document.getElementById('avatar-canvas') as HTMLCanvasElement;
 
 const compositor = new AvatarCompositor(canvas, defaultAvatarConfig);
 
-// Avatar compose
 (async () => {
   await compositor.init();
   compositor.start();
+  const api = (window as any).electronAPI;
+  const raw = await api?.readMemoryFile?.(SPRITE_CLIP_FILE);
+  if (raw) {
+    await applyClipStore(compositor, parseClipStore(raw));
+  }
+  api?.onSpriteApply?.(async (data: unknown) => {
+    if (!isSpriteApplyPayload(data)) return;
+    await compositor.applyPartClip(data.part, data.expression, data.frames, data.fps);
+    compositor.previewExpression(data.expression);
+  });
+  api?.onSpriteReset?.((data: unknown) => {
+    if (!isSpriteResetPayload(data)) return;
+    compositor.restorePartClip(data.part, data.expression);
+    compositor.previewExpression(data.expression);
+  });
   console.log('[Renderer] AvatarCompositor started.');
 })();
 

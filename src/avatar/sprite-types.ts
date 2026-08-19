@@ -63,6 +63,8 @@ export interface FrameArrayDef extends BaseAnimationDef {
    * Index-aligned with srcArray. If not set, each frame holds for 1 tick.
    */
   holdTicks?: number[];
+
+  fps?: number;
 }
 
 export type AnimationDef = SpriteSheetDef | FrameArrayDef;

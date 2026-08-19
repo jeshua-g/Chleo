@@ -85,7 +85,9 @@ ipcMain.on('drag-window', (event: Electron.IpcMainEvent, dx: number, dy: number)
 // IPC handlers for Desktop Native memory file storage
 ipcMain.handle('save-memory-file', (_event, filename: string, content: string) => {
   try {
-    const filePath = path.join(app.getPath('userData'), filename);
+    const base = path.basename(String(filename ?? ''));
+    if (!base || base !== filename) return false;
+    const filePath = path.join(app.getPath('userData'), base);
     fs.writeFileSync(filePath, content, 'utf-8');
     return true;
   } catch (err) {
@@ -96,7 +98,9 @@ ipcMain.handle('save-memory-file', (_event, filename: string, content: string) =
 
 ipcMain.handle('read-memory-file', (_event, filename: string) => {
   try {
-    const filePath = path.join(app.getPath('userData'), filename);
+    const base = path.basename(String(filename ?? ''));
+    if (!base || base !== filename) return null;
+    const filePath = path.join(app.getPath('userData'), base);
     if (fs.existsSync(filePath)) {
       return fs.readFileSync(filePath, 'utf-8');
     }

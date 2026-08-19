@@ -27,6 +27,22 @@ export type {
   CleoExpression,
 } from './sprite-types';
 export { PART_RENDER_ORDER } from './sprite-types';
+export {
+  SPRITE_CLIP_FILE,
+  CLIP_EXPRESSIONS,
+  emptyClipStore,
+  parseClipStore,
+  mergeClipApply,
+  mergeClipReset,
+  isSpriteApplyPayload,
+  isSpriteResetPayload,
+  applyClipStore,
+} from './clip-store';
+export type {
+  DesktopClipStore,
+  SpriteApplyPayload,
+  SpriteResetPayload,
+} from './clip-store';
 export { RoboticTTSModulator, defaultTTSModulator, DEFAULT_MODULATION_CONFIG } from './tts/robotic-tts-modulator';
 export type { RoboticModulationConfig, TTSModulatorConfig } from './tts/robotic-tts-modulator';
 export { TTSAnalyzer, defaultTTSAnalyzer } from './tts/tts-analyzer';

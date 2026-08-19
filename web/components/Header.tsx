@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Badge } from './ui';
 
 interface HeaderProps {
-  activeTab: 'home' | 'playground' | 'marketplace' | 'blog';
+  activeTab: 'home' | 'playground' | 'editor' | 'marketplace' | 'blog';
   theme?: 'cream' | 'grid';
   onThemeChange?: (theme: 'cream' | 'grid') => void;
   onToggleDrawer?: () => void;
@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
         <h1 className="brand-title">
           CHLEO{' '}
           <span className="pixel-tag">
-            {activeTab === 'home' ? 'Home' : activeTab === 'playground' ? 'Playground' : activeTab === 'marketplace' ? 'Marketplace' : 'Features'}
+            {activeTab === 'home' ? 'Home' : activeTab === 'playground' ? 'Playground' : activeTab === 'editor' ? 'Editor' : activeTab === 'marketplace' ? 'Marketplace' : 'Features'}
           </span>
         </h1>
       </a>
@@ -41,6 +41,12 @@ export const Header: React.FC<HeaderProps> = ({
           className={`nav-tab ${activeTab === 'playground' ? 'active' : ''}`}
         >
           Playground
+        </a>
+        <a
+          href="./editor.html"
+          className={`nav-tab ${activeTab === 'editor' ? 'active' : ''}`}
+        >
+          Editor
         </a>
         <a
           href="./marketplace.html"

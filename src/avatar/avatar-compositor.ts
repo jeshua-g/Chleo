@@ -13,6 +13,28 @@ import type { EmotionFrameConfig, PlutchikEmotion, ResponseType } from './emotio
 import { getAvatarEmotionFrames } from './emotions/response-frame-map';
 import { defaultSpeechOrchestrator, type PreRenderedSpeechPacket } from './tts/speech-orchestrator';
 
+function clonePartAnimations(config: AvatarConfig): Record<PartName, Record<string, AnimationDef>> {
+  const out = {} as Record<PartName, Record<string, AnimationDef>>;
+  for (const part of PART_RENDER_ORDER) {
+    out[part] = { ...config.parts[part].animations };
+  }
+  return out;
+}
+
+function cloneAvatarConfig(config: AvatarConfig): AvatarConfig {
+  return {
+    ...config,
+    parts: PART_RENDER_ORDER.reduce((acc, part) => {
+      const src = config.parts[part];
+      acc[part] = {
+        ...src,
+        animations: { ...src.animations },
+      };
+      return acc;
+    }, {} as AvatarConfig['parts']),
+  };
+}
+
 /** Options for speakWithEmotion and speakWithEmotionConfig methods. */
 export interface SpeakOptions {
   /** Optional callback executed when speech animation duration completes. */
@@ -38,6 +60,8 @@ interface PartAnimationState {
   /** Hold-tick counter for frame-array animations. Tracks how many
    *  ticks the current frame has been displayed. */
   holdCounter: number;
+
+  fpsAccumMs: number;
 }
 
 /**
@@ -48,6 +72,8 @@ export class AvatarCompositor {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private config: AvatarConfig;
+
+  private stockAnimations: Record<PartName, Record<string, AnimationDef>>;
 
   /** Global master frame counter. */
   private globalFrame: number = 0;
@@ -85,7 +111,8 @@ export class AvatarCompositor {
 
   constructor(canvas: HTMLCanvasElement, config: AvatarConfig) {
     this.canvas = canvas;
-    this.config = config;
+    this.config = cloneAvatarConfig(config);
+    this.stockAnimations = clonePartAnimations(config);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -107,6 +134,7 @@ export class AvatarCompositor {
         completedCycles: 0,
         loopMode: animDef?.loop ?? 'infinite',
         holdCounter: 0,
+        fpsAccumMs: 0,
       };
     }
   }
@@ -180,7 +208,6 @@ export class AvatarCompositor {
   }
 
   /**
-  /**
    * Inject composed frame arrays and hold ticks as transient 'speak'
    * animation definitions into the runtime config. Play them once per
    * affected part.
@@ -224,6 +251,113 @@ export class AvatarCompositor {
       // Play the composed speak animation once.
       this.playAnimation(part, 'speak', 'once');
     }
+  }
+
+  async applyPartClip(
+    part: PartName,
+    animName: string,
+    srcArray: string[],
+    fps: number = 12
+  ): Promise<void> {
+    if (!srcArray.length) return;
+
+    await ensureImagesLoaded(srcArray, this.images);
+
+    const { width: targetW, height: targetH } = this.getPartSpriteSize(part);
+    const scaledSrcs: string[] = [];
+    for (const src of srcArray) {
+      const img = this.images.get(src);
+      if (!img) continue;
+      if (img.width === targetW && img.height === targetH) {
+        scaledSrcs.push(src);
+        continue;
+      }
+      const scaled = scaleImageNearest(img, targetW, targetH);
+      scaledSrcs.push(scaled);
+    }
+    if (!scaledSrcs.length) return;
+
+    await ensureImagesLoaded(scaledSrcs, this.images);
+
+    const clipDef: FrameArrayDef = {
+      type: 'framearray',
+      srcArray: scaledSrcs,
+      fps,
+      loop: 'infinite',
+    };
+    this.config.parts[part].animations[animName] = clipDef;
+    this.playAnimation(part, animName, 'infinite');
+  }
+
+  async playCustomClip(part: PartName, srcArray: string[], fps: number = 12): Promise<void> {
+    return this.applyPartClip(part, 'custom', srcArray, fps);
+  }
+
+  restorePartClip(part: PartName, animName: string): void {
+    const stock = this.stockAnimations[part][animName];
+    if (stock) {
+      this.config.parts[part].animations[animName] = stock;
+    } else {
+      delete this.config.parts[part].animations[animName];
+    }
+    if (this.config.parts[part].animations[animName]) {
+      this.playAnimation(part, animName, 'infinite');
+    } else {
+      this.resetPart(part);
+    }
+  }
+
+  clearCustomClip(part: PartName): void {
+    this.restorePartClip(part, 'custom');
+  }
+
+  previewExpression(expression: CleoExpression): void {
+    switch (expression) {
+      case 'idle':
+        this.resetAll();
+        break;
+      case 'blink':
+        this.playAnimation('eyes', 'blink', 'infinite');
+        break;
+      case 'speak':
+        this.playAnimation('mouth', 'speak', 'infinite');
+        break;
+      case 'sleep':
+        this.playAnimation('body', 'sleep', 'infinite');
+        this.playAnimation('eyes', 'sleep', 'infinite');
+        break;
+      case 'close_eyes':
+        this.playAnimation('eyes', 'close_eyes', 'infinite');
+        break;
+      case 'angry':
+        this.playAnimation('eyebrows', 'angry', 'infinite');
+        break;
+      case 'focused':
+        this.playAnimation('eyebrows', 'focused', 'infinite');
+        this.playAnimation('eyes', 'focused', 'infinite');
+        break;
+      case 'happy':
+        this.playAnimation('eyebrows', 'happy', 'infinite');
+        this.playAnimation('eyes', 'happy', 'infinite');
+        break;
+      case 'yawn':
+        this.playAnimation('mouth', 'yawn', 'infinite');
+        this.playAnimation('eyes', 'blink', 'infinite');
+        break;
+      case 'question':
+        this.playAnimation('eyebrows', 'question', 'infinite');
+        this.playAnimation('eyes', 'question', 'infinite');
+        break;
+    }
+  }
+
+  getPartSpriteSize(part: PartName): { width: number; height: number } {
+    const partConfig = this.config.parts[part];
+    const def = partConfig.animations[partConfig.defaultAnimation];
+    if (def?.type === 'spritesheet') {
+      return { width: def.frameWidth, height: def.frameHeight };
+    }
+    return { width: this.config.canvasWidth, height: this.config.canvasHeight };
   }
 
   /**
@@ -287,6 +421,7 @@ export class AvatarCompositor {
     state.localFrame = 0;
     state.completedCycles = 0;
     state.holdCounter = 0;
+    state.fpsAccumMs = 0;
     state.loopMode = loopOverride ?? animDef.loop ?? 'infinite';
 
     console.log(`[AvatarCompositor] Part "${part}" playing animation "${animName}" (loopMode: ${state.loopMode})`);
@@ -319,6 +454,10 @@ export class AvatarCompositor {
         }
         break;
       }
+      case 'sleep':
+        this.playAnimation('body', 'sleep', 'infinite');
+        this.playAnimation('eyes', 'sleep', 'infinite');
+        break;
       case 'close_eyes':
         this.playAnimation('eyes', 'close_eyes', 'infinite');
         break;
@@ -527,30 +666,34 @@ export class AvatarCompositor {
         }
       }
 
-      // --- Hold-tick logic for frame-array animations ---
-      if (animDef.type === 'framearray' && animDef.holdTicks && animDef.holdTicks.length > 0) {
+      let steps = 1;
+      if (animDef.type === 'framearray' && animDef.fps && animDef.fps > 0) {
+        const tickMs = (this.config.cycleDurationMs ?? 1000) / this.config.masterFrameCount;
+        state.fpsAccumMs += tickMs;
+        const frameMs = 1000 / animDef.fps;
+        steps = 0;
+        while (state.fpsAccumMs >= frameMs) {
+          state.fpsAccumMs -= frameMs;
+          steps++;
+        }
+      } else if (animDef.type === 'framearray' && animDef.holdTicks && animDef.holdTicks.length > 0) {
         state.holdCounter++;
         const holdNeeded = animDef.holdTicks[state.localFrame] ?? 1;
-
         if (state.holdCounter < holdNeeded) {
-          // Still holding this frame — do not advance.
           continue;
         }
-
-        // Hold complete — reset counter and advance.
         state.holdCounter = 0;
-        state.localFrame++;
-      } else {
-        // Default: advance 1 frame per tick (spritesheet or no holdTicks).
-        state.localFrame++;
+        steps = 1;
       }
 
-      if (state.localFrame >= frameCount) {
-        state.completedCycles++;
-
-        if (this.shouldRevertToDefault(state)) {
-          this.resetPart(part);
-        } else {
+      for (let i = 0; i < steps; i++) {
+        state.localFrame++;
+        if (state.localFrame >= frameCount) {
+          state.completedCycles++;
+          if (this.shouldRevertToDefault(state)) {
+            this.resetPart(part);
+            break;
+          }
           state.localFrame = state.localFrame % frameCount;
         }
       }
@@ -577,6 +720,17 @@ export class AvatarCompositor {
     return this.BLINK_MIN_TICKS +
       Math.floor(Math.random() * (this.BLINK_MAX_TICKS - this.BLINK_MIN_TICKS));
   }
+}
+
+function scaleImageNearest(img: HTMLImageElement, width: number, height: number): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return img.src;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL('image/png');
 }
 
 /** Word boundary frame anchor for synchronized word playback. */

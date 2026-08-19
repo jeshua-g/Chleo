@@ -10,6 +10,7 @@ interface AvatarStageProps {
   isBubbleVisible: boolean;
   activeExpressionLabel: string;
   renderScale?: number;
+  compact?: boolean;
   theme?: 'cream' | 'grid';
   onThemeChange?: (theme: 'cream' | 'grid') => void;
   onCompositorInit?: (compositor: AvatarCompositor) => void;
@@ -22,6 +23,7 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   isBubbleVisible,
   activeExpressionLabel,
   renderScale = 6,
+  compact = false,
   theme = 'cream',
   onThemeChange,
   onCompositorInit,
@@ -173,17 +175,20 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
   };
 
   return (
-    <section className="avatar-stage-container" id="stage-container">
+    <section
+      className={`avatar-stage-container${compact ? ' editor-preview' : ''}`}
+      id="stage-container"
+    >
       <div className="stage-card panel-bg-stage" id="avatar-stage" ref={stageRef}>
-        {/* Top Left Live v1.0 Badge */}
-        <div className="stage-overlay-top-left">
-          <Badge variant="pill" icon={<span className="pulse-dot" />}>
-            Live v1.0
-          </Badge>
-        </div>
+        {!compact && (
+          <div className="stage-overlay-top-left">
+            <Badge variant="pill" icon={<span className="pulse-dot" />}>
+              Live v1.0
+            </Badge>
+          </div>
+        )}
 
-        {/* Top Right Cream/Grid Theme Toggle */}
-        {onThemeChange && (
+        {onThemeChange && !compact && (
           <div className="stage-overlay-top-right">
             <div className="theme-selector">
               <Button
@@ -232,9 +237,11 @@ export const AvatarStage: React.FC<AvatarStageProps> = ({
           />
         </div>
 
-        <div id="drag-hint" className="drag-hint">
-          Drag CHLEO anywhere on stage
-        </div>
+        {!compact && (
+          <div id="drag-hint" className="drag-hint">
+            Drag CHLEO anywhere on stage
+          </div>
+        )}
       </div>
 
       <div className="stage-info-bar">
