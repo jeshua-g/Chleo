@@ -1,6 +1,6 @@
-import type { ChleoExpression, PartName } from '../src/avatar';
+import type { ChleoExpression, PartName } from "../src/avatar";
 
-const DESKTOP_WS = 'ws://127.0.0.1:8080';
+const DESKTOP_WS = "ws://127.0.0.1:8080";
 
 function sendDesktopMessage(payload: unknown): Promise<boolean> {
   return new Promise((resolve) => {
@@ -41,14 +41,20 @@ export function pushSpriteApplyToDesktop(
   part: PartName,
   expression: ChleoExpression,
   frames: string[],
-  fps: number
+  fps: number,
 ): Promise<boolean> {
-  return sendDesktopMessage({ type: 'sprite-apply', part, expression, frames, fps });
+  return sendDesktopMessage({
+    type: "sprite-apply",
+    part,
+    expression,
+    frames,
+    fps,
+  });
 }
 
 export function pushSpriteResetToDesktop(
   part: PartName,
-  expression: ChleoExpression
+  expression: ChleoExpression,
 ): Promise<boolean> {
-  return sendDesktopMessage({ type: 'sprite-reset', part, expression });
+  return sendDesktopMessage({ type: "sprite-reset", part, expression });
 }

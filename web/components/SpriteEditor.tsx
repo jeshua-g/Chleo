@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { PART_RENDER_ORDER } from '../../src/avatar';
-import type { ChleoExpression, PartName } from '../../src/avatar';
-import { Button, PanelSection, Select } from './ui';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { PART_RENDER_ORDER } from "../../src/avatar";
+import type { ChleoExpression, PartName } from "../../src/avatar";
+import { Button, PanelSection, Select } from "./ui";
 
 const SIZE = 64;
 const FPS = 12;
@@ -9,56 +9,56 @@ const FRAME_MS = 1000 / FPS;
 const ZOOM_MIN = 4;
 const ZOOM_MAX = 24;
 const ZOOM_DEFAULT = 8;
-const STORAGE_KEY = 'chleo-playground-sprite-clip';
+const STORAGE_KEY = "chleo-playground-sprite-clip";
 
 const EXPRESSIONS: ChleoExpression[] = [
-  'idle',
-  'blink',
-  'speak',
-  'sleep',
-  'close_eyes',
-  'angry',
-  'yawn',
-  'focused',
-  'happy',
-  'question',
+  "idle",
+  "blink",
+  "speak",
+  "sleep",
+  "close_eyes",
+  "angry",
+  "yawn",
+  "focused",
+  "happy",
+  "question",
 ];
 
 const EXPRESSION_PARTS: Record<ChleoExpression, PartName[]> = {
-  idle: ['body', 'eyes', 'mouth', 'eyebrows'],
-  blink: ['eyes'],
-  speak: ['mouth'],
-  sleep: ['body', 'eyes'],
-  close_eyes: ['eyes'],
-  angry: ['eyebrows'],
-  yawn: ['mouth', 'eyes'],
-  focused: ['eyes', 'eyebrows'],
-  happy: ['eyes', 'eyebrows'],
-  question: ['eyes', 'eyebrows'],
+  idle: ["body", "eyes", "mouth", "eyebrows"],
+  blink: ["eyes"],
+  speak: ["mouth"],
+  sleep: ["body", "eyes"],
+  close_eyes: ["eyes"],
+  angry: ["eyebrows"],
+  yawn: ["mouth", "eyes"],
+  focused: ["eyes", "eyebrows"],
+  happy: ["eyes", "eyebrows"],
+  question: ["eyes", "eyebrows"],
 };
 
 function expressionLabel(name: ChleoExpression): string {
-  return name.replace('_', ' ');
+  return name.replace("_", " ");
 }
 
 type Rgba = [number, number, number, number];
-type Tool = 'pencil' | 'fill';
+type Tool = "pencil" | "fill";
 
 const PALETTE: { id: string; rgba: Rgba }[] = [
-  { id: 'erase', rgba: [0, 0, 0, 0] },
-  { id: 'ink', rgba: [45, 36, 36, 255] },
-  { id: 'white', rgba: [255, 255, 255, 255] },
-  { id: 'skin', rgba: [255, 214, 170, 255] },
-  { id: 'pink', rgba: [244, 114, 182, 255] },
-  { id: 'red', rgba: [220, 38, 38, 255] },
-  { id: 'orange', rgba: [249, 115, 22, 255] },
-  { id: 'yellow', rgba: [250, 204, 21, 255] },
-  { id: 'green', rgba: [34, 197, 94, 255] },
-  { id: 'cyan', rgba: [6, 182, 212, 255] },
-  { id: 'blue', rgba: [37, 99, 235, 255] },
-  { id: 'purple', rgba: [139, 92, 246, 255] },
-  { id: 'brown', rgba: [120, 53, 15, 255] },
-  { id: 'gray', rgba: [148, 163, 184, 255] },
+  { id: "erase", rgba: [0, 0, 0, 0] },
+  { id: "ink", rgba: [45, 36, 36, 255] },
+  { id: "white", rgba: [255, 255, 255, 255] },
+  { id: "skin", rgba: [255, 214, 170, 255] },
+  { id: "pink", rgba: [244, 114, 182, 255] },
+  { id: "red", rgba: [220, 38, 38, 255] },
+  { id: "orange", rgba: [249, 115, 22, 255] },
+  { id: "yellow", rgba: [250, 204, 21, 255] },
+  { id: "green", rgba: [34, 197, 94, 255] },
+  { id: "cyan", rgba: [6, 182, 212, 255] },
+  { id: "blue", rgba: [37, 99, 235, 255] },
+  { id: "purple", rgba: [139, 92, 246, 255] },
+  { id: "brown", rgba: [120, 53, 15, 255] },
+  { id: "gray", rgba: [148, 163, 184, 255] },
 ];
 
 type ClipMap = Record<PartName, string[]>;
@@ -73,43 +73,51 @@ interface StoredClipV3 {
 }
 
 interface SpriteEditorProps {
-  onApply: (part: PartName, expression: ChleoExpression, frames: string[], fps: number) => void | string | Promise<void | string>;
-  onResetPart: (part: PartName, expression: ChleoExpression) => void | string | Promise<void | string>;
+  onApply: (
+    part: PartName,
+    expression: ChleoExpression,
+    frames: string[],
+    fps: number,
+  ) => void | string | Promise<void | string>;
+  onResetPart: (
+    part: PartName,
+    expression: ChleoExpression,
+  ) => void | string | Promise<void | string>;
   onExpressionChange?: (expression: ChleoExpression) => void;
 }
 
 function blankDataUrl(): string {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
-  return canvas.toDataURL('image/png');
+  return canvas.toDataURL("image/png");
 }
 
 function dataUrlFromImageData(data: ImageData): string {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
-  canvas.getContext('2d')?.putImageData(data, 0, 0);
-  return canvas.toDataURL('image/png');
+  canvas.getContext("2d")?.putImageData(data, 0, 0);
+  return canvas.toDataURL("image/png");
 }
 
 function loadImageData(src: string): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement('canvas');
+      const canvas = document.createElement("canvas");
       canvas.width = SIZE;
       canvas.height = SIZE;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       if (!ctx) {
-        reject(new Error('2d context'));
+        reject(new Error("2d context"));
         return;
       }
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, SIZE, SIZE);
       resolve(ctx.getImageData(0, 0, SIZE, SIZE));
     };
-    img.onerror = () => reject(new Error('frame load failed'));
+    img.onerror = () => reject(new Error("frame load failed"));
     img.src = src;
   });
 }
@@ -132,8 +140,15 @@ function sameRgba(a: Rgba, b: Rgba): boolean {
   return a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
 }
 
-function paintLine(data: ImageData, x0: number, y0: number, x1: number, y1: number, rgba: Rgba): void {
-  let dx = Math.abs(x1 - x0);
+function paintLine(
+  data: ImageData,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+  rgba: Rgba,
+): void {
+  const dx = Math.abs(x1 - x0);
   const dy = Math.abs(y1 - y0);
   const sx = x0 < x1 ? 1 : -1;
   const sy = y0 < y1 ? 1 : -1;
@@ -183,7 +198,7 @@ function patchClip(
   map: ExpressionClipMap,
   expr: ChleoExpression,
   partName: PartName,
-  frames: string[]
+  frames: string[],
 ): ExpressionClipMap {
   return {
     ...map,
@@ -202,61 +217,82 @@ function emptyExpressionClips(): ExpressionClipMap {
   return out;
 }
 
-function loadStore(): { expression: ChleoExpression; part: PartName; clips: ExpressionClipMap } {
+function loadStore(): {
+  expression: ChleoExpression;
+  part: PartName;
+  clips: ExpressionClipMap;
+} {
   const clips = emptyExpressionClips();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { expression: 'idle', part: 'body', clips };
-    const parsed = JSON.parse(raw) as StoredClipV3 & { v?: number; frames?: string[]; clips?: unknown };
+    if (!raw) return { expression: "idle", part: "body", clips };
+    const parsed = JSON.parse(raw) as StoredClipV3 & {
+      v?: number;
+      frames?: string[];
+      clips?: unknown;
+    };
     if (parsed.v === 3 && parsed.clips) {
       for (const expression of EXPRESSIONS) {
         const byPart = parsed.clips[expression];
         if (!byPart) continue;
         for (const name of PART_RENDER_ORDER) {
           const frames = byPart[name];
-          if (Array.isArray(frames) && frames.length > 0) clips[expression][name] = frames;
+          if (Array.isArray(frames) && frames.length > 0)
+            clips[expression][name] = frames;
         }
       }
-      const expression = EXPRESSIONS.includes(parsed.expression) ? parsed.expression : 'idle';
+      const expression = EXPRESSIONS.includes(parsed.expression)
+        ? parsed.expression
+        : "idle";
       const allowed = EXPRESSION_PARTS[expression];
       const part = allowed.includes(parsed.part) ? parsed.part : allowed[0];
       return { expression, part, clips };
     }
-    if (parsed.v === 2 && parsed.clips && typeof parsed.clips === 'object') {
+    if (parsed.v === 2 && parsed.clips && typeof parsed.clips === "object") {
       const v2 = parsed.clips as Partial<ClipMap>;
       for (const name of PART_RENDER_ORDER) {
         const frames = v2[name];
-        if (Array.isArray(frames) && frames.length > 0) clips.idle[name] = frames;
+        if (Array.isArray(frames) && frames.length > 0)
+          clips.idle[name] = frames;
       }
-      const part = PART_RENDER_ORDER.includes(parsed.part) ? parsed.part : 'body';
-      return { expression: 'idle', part, clips };
+      const part = PART_RENDER_ORDER.includes(parsed.part)
+        ? parsed.part
+        : "body";
+      return { expression: "idle", part, clips };
     }
     if (Array.isArray(parsed.frames) && parsed.frames.length > 0) {
-      const part = PART_RENDER_ORDER.includes(parsed.part) ? parsed.part : 'body';
+      const part = PART_RENDER_ORDER.includes(parsed.part)
+        ? parsed.part
+        : "body";
       clips.idle[part] = parsed.frames;
-      return { expression: 'idle', part, clips };
+      return { expression: "idle", part, clips };
     }
-  } catch {
-  }
-  return { expression: 'idle', part: 'body', clips };
+  } catch {}
+  return { expression: "idle", part: "body", clips };
 }
 
 function scratchFrom(data: ImageData): HTMLCanvasElement {
-  const canvas = document.createElement('canvas');
+  const canvas = document.createElement("canvas");
   canvas.width = SIZE;
   canvas.height = SIZE;
-  canvas.getContext('2d')?.putImageData(data, 0, 0);
+  canvas.getContext("2d")?.putImageData(data, 0, 0);
   return canvas;
 }
 
-export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart, onExpressionChange }) => {
+export const SpriteEditor: React.FC<SpriteEditorProps> = ({
+  onApply,
+  onResetPart,
+  onExpressionChange,
+}) => {
   const initial = useRef(loadStore()).current;
   const [clips, setClips] = useState<ExpressionClipMap>(initial.clips);
-  const [expression, setExpression] = useState<ChleoExpression>(initial.expression);
+  const [expression, setExpression] = useState<ChleoExpression>(
+    initial.expression,
+  );
   const [part, setPart] = useState<PartName>(initial.part);
   const [index, setIndex] = useState<number>(0);
   const [zoom, setZoom] = useState<number>(ZOOM_DEFAULT);
-  const [tool, setTool] = useState<Tool>('pencil');
+  const [tool, setTool] = useState<Tool>("pencil");
   const [color, setColor] = useState<Rgba>(PALETTE[1].rgba);
   const [onionPrev, setOnionPrev] = useState<boolean>(true);
   const [onionNext, setOnionNext] = useState<boolean>(true);
@@ -269,7 +305,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const pixelsRef = useRef<ImageData>(new ImageData(SIZE, SIZE));
-  const onionLayersRef = useRef<{ prev: ImageData | null; next: ImageData | null; parts: ImageData[] }>({
+  const onionLayersRef = useRef<{
+    prev: ImageData | null;
+    next: ImageData | null;
+    parts: ImageData[];
+  }>({
     prev: null,
     next: null,
     parts: [],
@@ -337,36 +377,41 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
     applyPan(viewX - px * clamped, viewY - py * clamped, clamped);
   };
 
-  const persist = useCallback((
-    nextClips: ExpressionClipMap,
-    nextPart: PartName,
-    nextExpression: ChleoExpression
-  ) => {
-    try {
-      const payload: StoredClipV3 = {
-        v: 3,
-        expression: nextExpression,
-        part: nextPart,
-        fps: FPS,
-        clips: nextClips,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-    }
-  }, []);
+  const persist = useCallback(
+    (
+      nextClips: ExpressionClipMap,
+      nextPart: PartName,
+      nextExpression: ChleoExpression,
+    ) => {
+      try {
+        const payload: StoredClipV3 = {
+          v: 3,
+          expression: nextExpression,
+          part: nextPart,
+          fps: FPS,
+          clips: nextClips,
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      } catch {}
+    },
+    [],
+  );
 
-  const writeClips = useCallback((
-    nextClips: ExpressionClipMap,
-    nextPart: PartName = part,
-    nextExpression: ChleoExpression = expression
-  ) => {
-    setClips(nextClips);
-    persist(nextClips, nextPart, nextExpression);
-  }, [part, expression, persist]);
+  const writeClips = useCallback(
+    (
+      nextClips: ExpressionClipMap,
+      nextPart: PartName = part,
+      nextExpression: ChleoExpression = expression,
+    ) => {
+      setClips(nextClips);
+      persist(nextClips, nextPart, nextExpression);
+    },
+    [part, expression, persist],
+  );
 
   const paintCanvas = useCallback((pixels: ImageData) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
+    const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, SIZE, SIZE);
@@ -384,14 +429,22 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
     ctx.drawImage(scratchFrom(pixels), 0, 0);
   }, []);
 
-  const commitFrame = useCallback((pixels: ImageData, frameIndex: number, srcs: string[]) => {
-    const next = srcs.slice();
-    next[frameIndex] = dataUrlFromImageData(pixels);
-    skipReloadRef.current = true;
-    const nextClips = patchClip(clipsRef.current, expressionRef.current, partRef.current, next);
-    writeClips(nextClips);
-    return next;
-  }, [writeClips]);
+  const commitFrame = useCallback(
+    (pixels: ImageData, frameIndex: number, srcs: string[]) => {
+      const next = srcs.slice();
+      next[frameIndex] = dataUrlFromImageData(pixels);
+      skipReloadRef.current = true;
+      const nextClips = patchClip(
+        clipsRef.current,
+        expressionRef.current,
+        partRef.current,
+        next,
+      );
+      writeClips(nextClips);
+      return next;
+    },
+    [writeClips],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -401,7 +454,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
       const showOnion = !playing;
 
       const loadOnion = async () => {
-        const layers = { prev: null as ImageData | null, next: null as ImageData | null, parts: [] as ImageData[] };
+        const layers = {
+          prev: null as ImageData | null,
+          next: null as ImageData | null,
+          parts: [] as ImageData[],
+        };
         if (!showOnion) return layers;
         if (onionPrev && index > 0) {
           layers.prev = await loadImageData(srcs[index - 1]);
@@ -419,8 +476,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
             if (!src) continue;
             try {
               layers.parts.push(await loadImageData(src));
-            } catch {
-            }
+            } catch {}
           }
         }
         return layers;
@@ -449,7 +505,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
 
   useEffect(() => {
     return () => {
-      if (playTimerRef.current !== null) window.clearInterval(playTimerRef.current);
+      if (playTimerRef.current !== null)
+        window.clearInterval(playTimerRef.current);
     };
   }, []);
 
@@ -481,7 +538,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
     drawingRef.current = true;
     lastPixRef.current = pt;
     const pixels = pixelsRef.current;
-    if (tool === 'fill') {
+    if (tool === "fill") {
       floodFill(pixels, pt.x, pt.y, color);
     } else {
       setPixel(pixels, pt.x, pt.y, color);
@@ -497,7 +554,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
       applyPan(panRef.current.x + dx, panRef.current.y + dy);
       return;
     }
-    if (!drawingRef.current || playing || tool !== 'pencil') return;
+    if (!drawingRef.current || playing || tool !== "pencil") return;
     const pt = canvasPixel(e);
     if (!pt) return;
     const last = lastPixRef.current ?? pt;
@@ -520,7 +577,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
   const fitView = () => {
     const { w, h } = viewportSize();
     if (!w || !h) return;
-    const z = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Math.floor(Math.min(w, h) / SIZE)));
+    const z = Math.max(
+      ZOOM_MIN,
+      Math.min(ZOOM_MAX, Math.floor(Math.min(w, h) / SIZE)),
+    );
     zoomRef.current = z;
     setZoom(z);
     applyPan(0, 0, z);
@@ -533,33 +593,37 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
       e.preventDefault();
       const rect = vp.getBoundingClientRect();
       const step = e.deltaY < 0 ? 1 : -1;
-      zoomAt(zoomRef.current + step, e.clientX - rect.left, e.clientY - rect.top);
+      zoomAt(
+        zoomRef.current + step,
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+      );
     };
-    vp.addEventListener('wheel', onWheel, { passive: false });
-    return () => vp.removeEventListener('wheel', onWheel);
+    vp.addEventListener("wheel", onWheel, { passive: false });
+    return () => vp.removeEventListener("wheel", onWheel);
   }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
+      if (e.code === "Space") {
         e.preventDefault();
         spaceRef.current = true;
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') spaceRef.current = false;
+      if (e.code === "Space") spaceRef.current = false;
     };
-    window.addEventListener('keydown', onKeyDown);
-    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
     return () => {
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
     };
   }, []);
 
   useEffect(() => {
     const vp = viewportRef.current;
-    if (!vp || typeof ResizeObserver === 'undefined') {
+    if (!vp || typeof ResizeObserver === "undefined") {
       fitView();
       return;
     }
@@ -648,7 +712,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
     skipReloadRef.current = false;
     const allowed = EXPRESSION_PARTS[nextExpression];
     const nextPart = allowed.includes(part) ? part : allowed[0];
-    writeClips(patchClip(clips, expression, part, committed), nextPart, nextExpression);
+    writeClips(
+      patchClip(clips, expression, part, committed),
+      nextPart,
+      nextExpression,
+    );
     setExpression(nextExpression);
     setPart(nextPart);
     setIndex(0);
@@ -678,7 +746,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
     if (playing) stopPlay();
     const committed = commitFrame(pixelsRef.current, index, frames);
     const note = await onApply(part, expression, committed, FPS);
-    setStatus(note || `Applied ${committed.length}f → ${part} / ${expressionLabel(expression)}`);
+    setStatus(
+      note ||
+        `Applied ${committed.length}f → ${part} / ${expressionLabel(expression)}`,
+    );
   };
 
   return (
@@ -699,7 +770,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
               width: SIZE * zoom,
               height: SIZE * zoom,
               transform: `translate(${pan.x}px, ${pan.y}px)`,
-              ['--grid-cell' as string]: `${zoom}px`,
+              ["--grid-cell" as string]: `${zoom}px`,
             }}
           >
             <canvas
@@ -717,7 +788,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
             variant="secondary"
             onClick={() => nudgeZoom(-1)}
             disabled={zoom <= ZOOM_MIN}
-            style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+            style={{ padding: "6px 10px", fontSize: "0.75rem" }}
           >
             −
           </Button>
@@ -726,29 +797,31 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
             variant="secondary"
             onClick={() => nudgeZoom(1)}
             disabled={zoom >= ZOOM_MAX}
-            style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+            style={{ padding: "6px 10px", fontSize: "0.75rem" }}
           >
             +
           </Button>
           <Button
             variant="secondary"
             onClick={fitView}
-            style={{ padding: '6px 10px', fontSize: '0.75rem' }}
+            style={{ padding: "6px 10px", fontSize: "0.75rem" }}
           >
             Fit
           </Button>
-          <span className="sprite-frame-label">scroll zoom · right-drag pan</span>
+          <span className="sprite-frame-label">
+            scroll zoom · right-drag pan
+          </span>
           <Button
-            variant={tool === 'pencil' ? 'primary' : 'secondary'}
-            onClick={() => setTool('pencil')}
-            style={{ flex: 1, padding: '6px 4px', fontSize: '0.75rem' }}
+            variant={tool === "pencil" ? "primary" : "secondary"}
+            onClick={() => setTool("pencil")}
+            style={{ flex: 1, padding: "6px 4px", fontSize: "0.75rem" }}
           >
             Pencil
           </Button>
           <Button
-            variant={tool === 'fill' ? 'primary' : 'secondary'}
-            onClick={() => setTool('fill')}
-            style={{ flex: 1, padding: '6px 4px', fontSize: '0.75rem' }}
+            variant={tool === "fill" ? "primary" : "secondary"}
+            onClick={() => setTool("fill")}
+            style={{ flex: 1, padding: "6px 4px", fontSize: "0.75rem" }}
           >
             Fill
           </Button>
@@ -784,7 +857,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
           </label>
         </div>
 
-        <div className="sprite-palette" role="listbox" aria-label="Color palette">
+        <div
+          className="sprite-palette"
+          role="listbox"
+          aria-label="Color palette"
+        >
           {PALETTE.map((swatch) => {
             const isErase = swatch.rgba[3] === 0;
             const selected = sameRgba(color, swatch.rgba);
@@ -792,9 +869,13 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
               <button
                 key={swatch.id}
                 type="button"
-                className={`sprite-swatch ${selected ? 'active' : ''} ${isErase ? 'erase' : ''}`}
+                className={`sprite-swatch ${selected ? "active" : ""} ${isErase ? "erase" : ""}`}
                 title={swatch.id}
-                style={isErase ? undefined : { backgroundColor: `rgba(${swatch.rgba.join(',')})` }}
+                style={
+                  isErase
+                    ? undefined
+                    : { backgroundColor: `rgba(${swatch.rgba.join(",")})` }
+                }
                 onClick={() => setColor(swatch.rgba)}
               />
             );
@@ -806,7 +887,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
             <button
               key={i}
               type="button"
-              className={`sprite-thumb ${i === index ? 'active' : ''}`}
+              className={`sprite-thumb ${i === index ? "active" : ""}`}
               onClick={() => goTo(i)}
               title={`Frame ${i + 1}`}
             >
@@ -816,32 +897,69 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
         </div>
 
         <div className="sprite-editor-row">
-          <Button variant="secondary" onClick={() => goTo(index - 1)} disabled={index <= 0} style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={() => goTo(index - 1)}
+            disabled={index <= 0}
+            style={{ padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Prev
           </Button>
-          <Button variant="secondary" onClick={() => goTo(index + 1)} disabled={index >= frames.length - 1} style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={() => goTo(index + 1)}
+            disabled={index >= frames.length - 1}
+            style={{ padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Next
           </Button>
-          <Button variant="secondary" onClick={addFrame} style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={addFrame}
+            style={{ padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Add
           </Button>
-          <Button variant="secondary" onClick={duplicateFrame} style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={duplicateFrame}
+            style={{ padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Dup
           </Button>
-          <Button variant="secondary" onClick={deleteFrame} style={{ padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={deleteFrame}
+            style={{ padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Del
           </Button>
         </div>
-        <div className="sprite-frame-label">Frame {index + 1} / {frames.length} · {FPS} fps · {part} / {expressionLabel(expression)}</div>
+        <div className="sprite-frame-label">
+          Frame {index + 1} / {frames.length} · {FPS} fps · {part} /{" "}
+          {expressionLabel(expression)}
+        </div>
 
         <div className="sprite-editor-row">
-          <Button variant={playing ? 'accent' : 'primary'} onClick={togglePlay} style={{ flex: 1, padding: '6px 8px', fontSize: '0.75rem' }}>
-            {playing ? 'Stop' : 'Play'}
+          <Button
+            variant={playing ? "accent" : "primary"}
+            onClick={togglePlay}
+            style={{ flex: 1, padding: "6px 8px", fontSize: "0.75rem" }}
+          >
+            {playing ? "Stop" : "Play"}
           </Button>
-          <Button variant="secondary" onClick={clearFrame} style={{ flex: 1, padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={clearFrame}
+            style={{ flex: 1, padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Clear
           </Button>
-          <Button variant="secondary" onClick={resetClip} style={{ flex: 1, padding: '6px 8px', fontSize: '0.75rem' }}>
+          <Button
+            variant="secondary"
+            onClick={resetClip}
+            style={{ flex: 1, padding: "6px 8px", fontSize: "0.75rem" }}
+          >
             Reset
           </Button>
         </div>
@@ -850,7 +968,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
           id="sprite-expression-picker"
           label="Expression"
           value={expression}
-          options={EXPRESSIONS.map((name) => ({ value: name, label: expressionLabel(name) }))}
+          options={EXPRESSIONS.map((name) => ({
+            value: name,
+            label: expressionLabel(name),
+          }))}
           onChange={(value) => changeExpression(value as ChleoExpression)}
         />
 
@@ -858,11 +979,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
           id="sprite-part-picker"
           label="Part"
           value={part}
-          options={EXPRESSION_PARTS[expression].map((name) => ({ value: name, label: name }))}
+          options={EXPRESSION_PARTS[expression].map((name) => ({
+            value: name,
+            label: name,
+          }))}
           onChange={(value) => changePart(value as PartName)}
         />
 
-        <Button variant="primary" onClick={handleApply} style={{ width: '100%', padding: '8px 6px', fontSize: '0.8rem' }}>
+        <Button
+          variant="primary"
+          onClick={handleApply}
+          style={{ width: "100%", padding: "8px 6px", fontSize: "0.8rem" }}
+        >
           Apply
         </Button>
         {status && <div className="sprite-status">{status}</div>}
