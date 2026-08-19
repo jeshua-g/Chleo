@@ -133,16 +133,20 @@ function sameRgba(a: Rgba, b: Rgba): boolean {
 }
 
 function paintLine(data: ImageData, x0: number, y0: number, x1: number, y1: number, rgba: Rgba): void {
-  let dx = Math.abs(x1 - x0);
+  const dx = Math.abs(x1 - x0);
   const dy = Math.abs(y1 - y0);
   const sx = x0 < x1 ? 1 : -1;
   const sy = y0 < y1 ? 1 : -1;
   let err = dx - dy;
   let x = x0;
   let y = y0;
-  while (true) {
+  let plotting = true;
+  while (plotting) {
     setPixel(data, x, y, rgba);
-    if (x === x1 && y === y1) break;
+    if (x === x1 && y === y1) {
+      plotting = false;
+      continue;
+    }
     const e2 = 2 * err;
     if (e2 > -dy) {
       err -= dy;
@@ -237,6 +241,7 @@ function loadStore(): { expression: ChleoExpression; part: PartName; clips: Expr
       return { expression: 'idle', part, clips };
     }
   } catch {
+    void 0;
   }
   return { expression: 'idle', part: 'body', clips };
 }
@@ -352,6 +357,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
+      void 0;
     }
   }, []);
 
@@ -420,6 +426,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ onApply, onResetPart
             try {
               layers.parts.push(await loadImageData(src));
             } catch {
+              void 0;
             }
           }
         }
