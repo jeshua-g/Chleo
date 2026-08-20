@@ -221,6 +221,19 @@ function emptyExpressionClips(): ExpressionClipMap {
   return out;
 }
 
+const HIST_MAX = 40;
+
+interface HistSnap {
+  clips: ExpressionClipMap;
+  expression: ChleoExpression;
+  part: PartName;
+  index: number;
+}
+
+function cloneClips(map: ExpressionClipMap): ExpressionClipMap {
+  return JSON.parse(JSON.stringify(map)) as ExpressionClipMap;
+}
+
 function loadStore(): {
   expression: ChleoExpression;
   part: PartName;
@@ -330,6 +343,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const playTimerRef = useRef<number | null>(null);
   const skipReloadRef = useRef<boolean>(false);
+  const historyRef = useRef<{ undo: HistSnap[]; redo: HistSnap[] }>({
+    undo: [],
+    redo: [],
+  });
+  const undoRef = useRef<(() => void) | null>(null);
+  const redoRef = useRef<(() => void) | null>(null);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const indexRef = useRef(index);
   const framesRef = useRef(frames);
   const expressionRef = useRef(expression);
@@ -416,6 +437,35 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
     },
     [part, expression, persist],
   );
+
+  const bumpHist = () => {
+    setCanUndo(historyRef.current.undo.length > 0);
+    setCanRedo(historyRef.current.redo.length > 0);
+  };
+
+  const takeSnap = (): HistSnap => ({
+    clips: cloneClips(clipsRef.current),
+    expression: expressionRef.current,
+    part: partRef.current,
+    index: indexRef.current,
+  });
+
+  const pushHistory = () => {
+    const hist = historyRef.current;
+    hist.undo.push(takeSnap());
+    if (hist.undo.length > HIST_MAX) hist.undo.shift();
+    hist.redo = [];
+    bumpHist();
+  };
+
+  const restoreSnap = (snap: HistSnap) => {
+    skipReloadRef.current = false;
+    writeClips(snap.clips, snap.part, snap.expression);
+    setExpression(snap.expression);
+    setPart(snap.part);
+    setIndex(snap.index);
+    onExpressionChange?.(snap.expression);
+  };
 
   const paintCanvas = useCallback((pixels: ImageData) => {
     const canvas = canvasRef.current;
@@ -547,6 +597,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
     e.currentTarget.setPointerCapture(e.pointerId);
     drawingRef.current = true;
     lastPixRef.current = pt;
+    pushHistory();
     const pixels = pixelsRef.current;
     if (tool === "fill") {
       floodFill(pixels, pt.x, pt.y, color);
@@ -615,6 +666,22 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      const typing =
+        e.target instanceof HTMLElement &&
+        (e.target.tagName === "INPUT" ||
+          e.target.tagName === "SELECT" ||
+          e.target.tagName === "TEXTAREA");
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && !typing) {
+        e.preventDefault();
+        if (e.shiftKey) redoRef.current?.();
+        else undoRef.current?.();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y" && !typing) {
+        e.preventDefault();
+        redoRef.current?.();
+        return;
+      }
       if (e.code === "Space") {
         e.preventDefault();
         spaceRef.current = true;
@@ -653,6 +720,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setPlaying(false);
   };
 
+  const undo = () => {
+    const hist = historyRef.current;
+    const prev = hist.undo.pop();
+    if (!prev) return;
+    if (playing) stopPlay();
+    hist.redo.push(takeSnap());
+    restoreSnap(prev);
+    bumpHist();
+  };
+
+  const redo = () => {
+    const hist = historyRef.current;
+    const next = hist.redo.pop();
+    if (!next) return;
+    if (playing) stopPlay();
+    hist.undo.push(takeSnap());
+    restoreSnap(next);
+    bumpHist();
+  };
+
+  undoRef.current = undo;
+  redoRef.current = redo;
+
   const goTo = (nextIndex: number) => {
     if (playing) stopPlay();
     setIndex(Math.max(0, Math.min(frames.length - 1, nextIndex)));
@@ -660,6 +750,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   const addFrame = () => {
     if (playing) stopPlay();
+    pushHistory();
     const next = frames.slice();
     next.splice(index + 1, 0, blankDataUrl());
     writeClips(patchClip(clips, expression, part, next));
@@ -668,6 +759,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   const duplicateFrame = () => {
     if (playing) stopPlay();
+    pushHistory();
     const next = frames.slice();
     next.splice(index + 1, 0, frames[index] ?? blankDataUrl());
     writeClips(patchClip(clips, expression, part, next));
@@ -676,6 +768,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   const deleteFrame = () => {
     if (playing) stopPlay();
+    pushHistory();
     if (frames.length <= 1) {
       writeClips(patchClip(clips, expression, part, [blankDataUrl()]));
       setIndex(0);
@@ -688,6 +781,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   const clearFrame = () => {
     if (playing) stopPlay();
+    pushHistory();
     const blank = new ImageData(SIZE, SIZE);
     pixelsRef.current = blank;
     paintCanvas(blank);
@@ -696,6 +790,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
 
   const resetClip = async () => {
     stopPlay();
+    pushHistory();
     skipReloadRef.current = false;
     writeClips(patchClip(clips, expression, part, [blankDataUrl()]));
     setIndex(0);
@@ -759,6 +854,25 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
     setStatus(
       note ||
         `Applied ${committed.length}f → ${part} / ${expressionLabel(expression)}`,
+    );
+  };
+
+  const handleApplyAll = async () => {
+    if (playing) stopPlay();
+    const committed = commitFrame(pixelsRef.current, index, frames);
+    const map = patchClip(clipsRef.current, expression, part, committed);
+    const parts = EXPRESSION_PARTS[expression];
+    let offline = false;
+    for (const name of parts) {
+      const srcs = map[expression]?.[name] ?? [blankDataUrl()];
+      const note = await onApply(name, expression, srcs, FPS);
+      if (note?.includes("offline")) offline = true;
+    }
+    const label = `${parts.join(", ")} / ${expressionLabel(expression)}`;
+    setStatus(
+      offline
+        ? `Applied ${label} · overlay offline`
+        : `Applied ${label} · overlay updated`,
     );
   };
 
@@ -972,6 +1086,24 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
           >
             Reset
           </Button>
+          <Button
+            variant="secondary"
+            onClick={undo}
+            disabled={!canUndo}
+            title="Ctrl+Z"
+            style={{ flex: 1, padding: "6px 8px", fontSize: "0.75rem" }}
+          >
+            Undo
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={redo}
+            disabled={!canRedo}
+            title="Ctrl+Shift+Z"
+            style={{ flex: 1, padding: "6px 8px", fontSize: "0.75rem" }}
+          >
+            Redo
+          </Button>
         </div>
 
         <Select
@@ -996,13 +1128,23 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({
           onChange={(value) => changePart(value as PartName)}
         />
 
-        <Button
-          variant="primary"
-          onClick={handleApply}
-          style={{ width: "100%", padding: "8px 6px", fontSize: "0.8rem" }}
-        >
-          Apply
-        </Button>
+        <div className="sprite-editor-row">
+          <Button
+            variant="primary"
+            onClick={handleApply}
+            style={{ flex: 1, padding: "8px 6px", fontSize: "0.8rem" }}
+          >
+            Apply
+          </Button>
+          <Button
+            variant="accent"
+            onClick={handleApplyAll}
+            title={`Apply ${EXPRESSION_PARTS[expression].join(", ")}`}
+            style={{ flex: 1, padding: "8px 6px", fontSize: "0.8rem" }}
+          >
+            Apply all
+          </Button>
+        </div>
         {status && <div className="sprite-status">{status}</div>}
       </div>
     </PanelSection>
